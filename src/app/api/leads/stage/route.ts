@@ -22,8 +22,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const validStages = [
-    "new", "needs_review", "qualified", "info_sent",
-    "negotiation", "po_received", "dispatched", "won", "lost", "nurture",
+    "new", "info_sent", "negotiation", "po", "dispatched", "ignored",
   ] as const;
 
   if (!validStages.includes(stage)) {

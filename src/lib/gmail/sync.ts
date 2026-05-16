@@ -161,9 +161,21 @@ async function backfill(
     maxResults: INITIAL_BACKFILL_COUNT,
   });
   const messages = listed.data.messages ?? [];
-  for (const stub of messages) {
-    if (!stub.id) continue;
-    await ingestMessageById(conn, stub.id, result);
+
+  const concurrency = 5;
+  for (let i = 0; i < messages.length; i += concurrency) {
+    const batch = messages.slice(i, i + concurrency);
+    const outcomes = await Promise.allSettled(
+      batch.map((stub) => {
+        if (!stub.id) return;
+        return ingestMessageById(conn, stub.id, result);
+      }),
+    );
+    for (const o of outcomes) {
+      if (o.status === "rejected") {
+        result.errors.push(String(o.reason));
+      }
+    }
   }
 }
 

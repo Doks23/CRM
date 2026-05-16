@@ -19,8 +19,8 @@ import type {
 import { loadRecentEditExamples } from "@/lib/ai/tone-learning";
 
 const DEFAULT_STAGES: ClassifyOutput["leadType"] extends never ? never : Array<
-  "won" | "info_sent" | "negotiation" | "nurture" | "qualified" | "po_received" | "dispatched"
-> = ["won", "info_sent", "negotiation", "nurture", "qualified", "po_received", "dispatched"];
+  "dispatched" | "info_sent" | "negotiation" | "po"
+> = ["dispatched", "info_sent", "negotiation", "po"];
 
 /**
  * seasonal-outreach

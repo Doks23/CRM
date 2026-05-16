@@ -7,7 +7,7 @@ import { createGmailDraft, sendGmailDraft } from "@/lib/gmail/draft";
 import { computeEditRatio } from "@/lib/text-diff";
 import { auth } from "@/auth";
 
-const STAGE_ORDER = ["new", "needs_review", "qualified", "info_sent", "negotiation", "po_received", "dispatched", "won", "lost", "nurture"];
+const STAGE_ORDER = ["new", "info_sent", "negotiation", "po", "dispatched", "ignored"];
 
 export async function POST(req: NextRequest) {
   const session = await auth();

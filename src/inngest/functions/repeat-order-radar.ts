@@ -16,7 +16,7 @@ import { loadRecentEditExamples } from "@/lib/ai/tone-learning";
 /**
  * repeat-order-radar
  *
- * Runs every morning. For each lead in the `won` stage whose latest inbound
+ * Runs every morning. For each lead in the `dispatched` stage whose latest inbound
  * message is older than `reorderNudgeDays`, drafts a "due for reorder?"
  * check-in message. Owner reviews and sends — same as any other draft.
  *
@@ -45,15 +45,15 @@ export const repeatOrderRadar = inngest.createFunction(
 
     const cutoff = new Date(Date.now() - nudgeDays * 86_400_000);
 
-    const candidates = await step.run("find-silent-won-leads", async () => {
-      // Won leads where lastActivityAt is older than cutoff AND either we've
+    const candidates = await step.run("find-silent-dispatched-leads", async () => {
+      // Dispatched leads where lastActivityAt is older than cutoff AND either we've
       // never nudged or the last nudge was also older than the cadence.
       return db
         .select()
         .from(leads)
         .where(
           and(
-            sql`${leads.stage} in ('won', 'dispatched')`,
+            sql`${leads.stage} = 'dispatched'`,
             sql`${leads.lastActivityAt} < ${cutoff}`,
             or(
               isNull(leads.lastReorderNudgeAt),
@@ -64,7 +64,7 @@ export const repeatOrderRadar = inngest.createFunction(
     });
 
     if (candidates.length === 0) {
-      return { checked: 0, drafted: 0, reason: "no silent won leads" };
+      return { checked: 0, drafted: 0, reason: "no silent dispatched leads" };
     }
 
     const activeProducts = await step.run("load-products", () =>
@@ -164,7 +164,7 @@ export const repeatOrderRadar = inngest.createFunction(
                 preferLanguage: lang,
               }),
               instructions:
-                `This lead is a past customer (deal stage: won) and has gone silent for ${daysSilent} days. ` +
+                `This lead is a past customer (deal stage: dispatched) and has gone silent for ${daysSilent} days. ` +
                 `Write a short, warm check-in that asks if they are due for another order. ` +
                 `Do NOT push aggressively. Reference the existing relationship. ` +
                 `If you know what they bought before (from notes or thread), reference it. ` +

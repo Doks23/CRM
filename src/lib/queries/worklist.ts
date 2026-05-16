@@ -81,7 +81,7 @@ export async function loadWorklist(): Promise<WorklistTile[]> {
     );
   const samplesFollowup = samplesFollowupRow?.n ?? 0;
 
-  // ── 4. Reorder-due (won leads silent past nudgeDays) ──────────────────
+  // ── 4. Reorder-due (dispatched leads silent past nudgeDays) ───────────
   const nudgeDays = profile.reorderNudgeDays ?? 90;
   const cutoff = new Date(Date.now() - nudgeDays * 86_400_000);
   const [reorderDueRow] = await db
@@ -89,7 +89,7 @@ export async function loadWorklist(): Promise<WorklistTile[]> {
     .from(leads)
     .where(
       and(
-        sql`${leads.stage} in ('won', 'dispatched')`,
+        sql`${leads.stage} = 'dispatched'`,
         sql`${leads.lastActivityAt} < ${cutoff}`,
       ),
     );

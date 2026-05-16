@@ -49,9 +49,11 @@ export const leadStageEnum = pgEnum("lead_stage", [
   "info_sent",
   "negotiation",
   "po_received",
+  "po",
   "dispatched",
   "won",
   "lost",
+  "ignored",
   "nurture",
 ]);
 

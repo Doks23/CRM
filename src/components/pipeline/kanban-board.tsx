@@ -13,13 +13,10 @@ interface UserData {
 
 const STAGES = [
   { key: "new",         label: "New",         color: "bg-blue-500"   },
-  { key: "qualified",   label: "Qualified",   color: "bg-emerald-500" },
   { key: "info_sent",   label: "Info Sent",   color: "bg-cyan-500"   },
   { key: "negotiation", label: "Negotiation", color: "bg-violet-500" },
-  { key: "po_received", label: "PO Received", color: "bg-orange-500" },
+  { key: "po",          label: "PO",          color: "bg-orange-500" },
   { key: "dispatched",  label: "Dispatched",  color: "bg-indigo-500" },
-  { key: "won",         label: "Won",         color: "bg-green-600"  },
-  { key: "lost",        label: "Lost",        color: "bg-red-500"    },
 ] as const;
 
 interface LeadData {

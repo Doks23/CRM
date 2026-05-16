@@ -9,7 +9,7 @@ import { Topbar } from "@/components/app/topbar";
 import { CreateLeadButton } from "@/components/pipeline/create-lead-button";
 import { Providers } from "@/components/providers";
 
-const INACTIVE_STAGES = new Set(["won", "lost", "nurture", "needs_review"]);
+const INACTIVE_STAGES = new Set(["ignored"]);
 
 export default async function AppLayout({
   children,

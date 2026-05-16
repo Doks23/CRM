@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, Trash2, ShieldCheck, Copy, Check } from "lucide-react";
+import {
+  UserPlus, Trash2, ShieldCheck, Copy, Check, KeyRound,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +38,8 @@ export function EmployeeManager({ users }: Props) {
   const [role, setRole] = useState("sales");
   const [error, setError] = useState<string | null>(null);
   const [createdInfo, setCreatedInfo] = useState<{ email: string; password: string } | null>(null);
+  const [changingRole, setChangingRole] = useState<string | null>(null);
+  const [resettingPw, setResettingPw] = useState<string | null>(null);
 
   const handleAdd = () => {
     setError(null);
@@ -78,6 +82,44 @@ export function EmployeeManager({ users }: Props) {
     });
   };
 
+  const handleRoleChange = (userId: string, newRole: string) => {
+    setChangingRole(userId);
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/users/${userId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: newRole }),
+        });
+        if (!res.ok) throw new Error("Failed to update role");
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to update role");
+      } finally {
+        setChangingRole(null);
+      }
+    });
+  };
+
+  const handleResetPassword = (userId: string) => {
+    setResettingPw(userId);
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/users/${userId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resetPassword: true }),
+        });
+        if (!res.ok) throw new Error("Failed to reset password");
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to reset password");
+      } finally {
+        setResettingPw(null);
+      }
+    });
+  };
+
   const owners = users.filter((u) => u.role === "owner");
   const employees = users.filter((u) => u.role !== "owner");
 
@@ -90,9 +132,9 @@ export function EmployeeManager({ users }: Props) {
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-8 max-w-3xl">
+      <div className="flex-1 overflow-y-auto p-6 space-y-8">
         {/* Add employee form */}
-        <Card className="p-5 space-y-4">
+        <Card className="p-5 space-y-4 max-w-3xl">
           <div className="flex items-center gap-2">
             <UserPlus className="size-4 text-primary" />
             <h2 className="text-[16px] font-semibold">Add employee</h2>
@@ -140,7 +182,7 @@ export function EmployeeManager({ users }: Props) {
               onClick={handleAdd}
               disabled={isPending || !email.trim()}
             >
-              {isPending ? "Adding…" : "Add"}
+              {isPending ? "Adding\u2026" : "Add"}
             </Button>
           </div>
           {error && <p className="text-[13px] text-destructive">{error}</p>}
@@ -149,32 +191,79 @@ export function EmployeeManager({ users }: Props) {
           )}
         </Card>
 
-        {/* Employees */}
+        {/* Employees table */}
         <section>
           <h2 className="text-[14px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Team members ({employees.length})
           </h2>
-          <div className="space-y-2">
-            {employees.map((u) => (
-              <Card key={u.id} className="p-3 flex items-center gap-3">
-                <SmartAvatar name={u.name ?? u.email} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-medium truncate">{u.name || "—"}</div>
-                  <div className="text-[12.5px] text-muted-foreground">{u.email}</div>
-                </div>
-                <Badge variant="outline" className="text-[11px] capitalize">
-                  {u.role}
-                </Badge>
-                <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => handleRemove(u.email)}>
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </Card>
-            ))}
-            {employees.length === 0 && (
-              <p className="text-[14px] text-muted-foreground py-4 text-center">
-                No team members yet. Add one above.
-              </p>
-            )}
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-[14px]">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Name</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Email</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Role</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Created</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((u) => (
+                  <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <SmartAvatar name={u.name ?? u.email} size="sm" />
+                        <span className="font-medium truncate">{u.name || "\u2014"}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{u.email}</td>
+                    <td className="px-4 py-2.5">
+                      <select
+                        value={u.role}
+                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                        disabled={changingRole === u.id}
+                        className="flex h-8 rounded-md border border-input bg-transparent px-2 py-1 text-[13px] shadow-sm"
+                      >
+                        {ROLE_OPTIONS.map((r) => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground text-[13px]">
+                      {new Date(u.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={resettingPw === u.id}
+                          onClick={() => handleResetPassword(u.id)}
+                          title="Reset password to Temp@123"
+                        >
+                          <KeyRound className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive"
+                          onClick={() => handleRemove(u.email)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {employees.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-[14px]">
+                      No team members yet. Add one above.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -183,22 +272,35 @@ export function EmployeeManager({ users }: Props) {
           <h2 className="text-[14px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Owner ({owners.length})
           </h2>
-          <div className="space-y-2">
-            {owners.map((u) => (
-              <Card key={u.id} className="p-3 flex items-center gap-3">
-                <SmartAvatar name={u.name ?? u.email} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[14px] font-medium truncate">{u.name || u.email}</span>
-                    <ShieldCheck className="size-3.5 text-pos" />
-                  </div>
-                  <div className="text-[12.5px] text-muted-foreground">{u.email}</div>
-                </div>
-                <Badge variant="outline" className="text-[11px] capitalize">
-                  owner
-                </Badge>
-              </Card>
-            ))}
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-[14px]">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Name</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Email</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {owners.map((u) => (
+                  <tr key={u.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <SmartAvatar name={u.name ?? u.email} size="sm" />
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium truncate">{u.name || u.email}</span>
+                          <ShieldCheck className="size-3.5 text-pos shrink-0" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{u.email}</td>
+                    <td className="px-4 py-2.5">
+                      <Badge variant="outline" className="text-[11px] capitalize">owner</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       </div>

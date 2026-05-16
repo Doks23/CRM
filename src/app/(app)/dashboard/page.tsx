@@ -26,17 +26,13 @@ export const dynamic = "force-dynamic";
 
 const STAGE_META: Record<string, { label: string; color: string }> = {
   new:          { label: "New",          color: "var(--stage-1)" },
-  needs_review: { label: "New",          color: "var(--stage-1)" },
-  qualified:    { label: "Qualified",    color: "var(--stage-3)" },
   info_sent:    { label: "Info Sent",    color: "var(--stage-4)" },
   negotiation:  { label: "Negotiation",  color: "var(--stage-5)" },
-  po_received:  { label: "PO Received",  color: "var(--stage-6)" },
+  po:           { label: "PO",           color: "var(--stage-6)" },
   dispatched:   { label: "Dispatched",   color: "var(--stage-2)" },
-  won:          { label: "Won",          color: "var(--stage-7)" },
-  lost:         { label: "Lost",         color: "var(--warn)"    },
 };
 
-const PIPELINE_EXCLUDED = new Set(["won", "lost", "nurture", "needs_review"]);
+const PIPELINE_EXCLUDED = new Set(["ignored"]);
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -205,7 +201,7 @@ export default async function DashboardPage() {
             value: String(reorderDue),
             delta: tileMap.get("reorder_due")?.detail ?? "90d+",
             deltaCls: "bg-info-tint text-info",
-            sub: "won leads gone quiet",
+            sub: "silent past customers",
             spark: Array(7).fill(reorderDue),
             color: "var(--stage-1)",
           },

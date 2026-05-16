@@ -36,15 +36,11 @@ function relTime(date: Date | null) {
 function stageLabel(stage: string) {
   const MAP: Record<string, string> = {
     new: "New",
-    needs_review: "Needs Review",
-    qualified: "Qualified",
     info_sent: "Info Sent",
     negotiation: "Negotiation",
-    po_received: "PO Received",
+    po: "PO",
     dispatched: "Dispatched",
-    won: "Won",
-    lost: "Lost",
-    nurture: "Nurture",
+    ignored: "Ignored",
   };
   return MAP[stage] ?? stage;
 }
@@ -517,7 +513,7 @@ function FunnelCard({
             Conversion funnel
           </div>
           <div className="text-[13px] text-muted-foreground mt-0.5">
-            All leads → Won ·{" "}
+            All leads → Closed ·{" "}
             <strong className="text-foreground/85">{conversionPct}% conversion</strong>
           </div>
         </div>
@@ -876,7 +872,7 @@ function Leaderboard({
           const isStuck =
             r.lastActivityAt &&
             Date.now() - r.lastActivityAt.getTime() > 7 * 86_400_000 &&
-            !["won", "lost", "nurture"].includes(r.stage);
+            !["dispatched", "ignored"].includes(r.stage);
           return (
             <div
               key={r.id}

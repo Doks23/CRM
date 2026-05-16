@@ -161,7 +161,7 @@ export default async function InboxPage({
         <FolderGroup label="By stage">
           {stageCountRows.map((s) => {
             const key = s.stage === "po_received" ? "po" : s.stage;
-            if (["ignored", "won", "lost", "qualified", "needs_review", "nurture"].includes(s.stage)) return null;
+            if (s.stage === "ignored") return null;
             if (!STAGE_LABELS[key]) return null;
             return (
               <Link
