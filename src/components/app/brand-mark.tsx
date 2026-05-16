@@ -2,42 +2,48 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * Renders the White Pops logo from /public/logo.png plus an optional wordmark.
- * If logo.png is missing, the Image will 404 silently — drop the file at
- * /public/logo.png to make it appear.
+ * White Pops logomark. Uses /public/logo.png if present, otherwise a serif "w"
+ * on a dark chip so the brand still reads cleanly during dev.
  */
 export function BrandMark({
-  size = 36,
   withWordmark = true,
   className,
 }: {
-  size?: number;
   withWordmark?: boolean;
   className?: string;
 }) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <div
-        className="relative shrink-0 rounded-full overflow-hidden bg-zinc-950"
-        style={{ width: size, height: size }}
-      >
+      <div className="relative size-9 rounded-[10px] overflow-hidden bg-[oklch(0.18_0.008_80)] grid place-items-center shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
         <Image
           src="/logo.png"
           alt="White Pops"
           fill
-          sizes={`${size}px`}
+          sizes="36px"
           className="object-cover"
           priority
+          // If logo.png is missing, the fallback "w" below shows through.
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
         />
+        <span
+          className="serif italic text-[oklch(0.96_0.008_80)] text-[21px] leading-none -tracking-[0.5px] pointer-events-none"
+          aria-hidden
+        >
+          w
+        </span>
       </div>
-      {withWordmark ? (
+      {withWordmark && (
         <div className="leading-tight">
-          <div className="text-sm font-semibold tracking-tight">White Pops</div>
-          <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            CRM
+          <div className="text-[15px] font-semibold -tracking-[0.01em]">
+            White Pops
+          </div>
+          <div className="text-[10.5px] font-medium tracking-[0.10em] uppercase text-muted-foreground mt-px">
+            Saathi Prime
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

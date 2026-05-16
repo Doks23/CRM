@@ -80,7 +80,14 @@ export const ollamaProvider: LlmProvider = {
     );
     const content = response.message?.content;
     if (!content) throw new Error("Ollama returned empty classification");
-    return JSON.parse(content) as ClassifyOutput;
+    const parsed = JSON.parse(content) as ClassifyOutput;
+    if (response.prompt_eval_count !== undefined) {
+      parsed.tokensUsed = {
+        input: response.prompt_eval_count,
+        output: response.eval_count ?? 0,
+      };
+    }
+    return parsed;
   },
 
   async draft(input: DraftInput, modelId: string): Promise<DraftOutput> {

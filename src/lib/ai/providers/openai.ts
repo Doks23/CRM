@@ -47,7 +47,14 @@ export const openaiProvider: LlmProvider = {
     });
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error("OpenAI returned empty classification");
-    return JSON.parse(content) as ClassifyOutput;
+    const parsed = JSON.parse(content) as ClassifyOutput;
+    if (response.usage) {
+      parsed.tokensUsed = {
+        input: response.usage.prompt_tokens,
+        output: response.usage.completion_tokens,
+      };
+    }
+    return parsed;
   },
 
   async draft(input: DraftInput, modelId: string): Promise<DraftOutput> {

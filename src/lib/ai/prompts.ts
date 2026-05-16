@@ -111,14 +111,21 @@ export function buildDraftSystem(
     })
     .join("\n");
 
+  const brandVoiceBlock = profile.brandVoice?.trim()
+    ? `\nHOW WE WRITE (mirror this voice, vocabulary, and rhythm — this is more important than generic "professional tone"):
+---
+${profile.brandVoice.trim()}
+---\n`
+    : "";
+
   return `You are drafting a reply on behalf of ${profile.companyName}, a Makhana (fox nut) processor in India.
-Tone: ${profile.defaultTone}. Currency: ${profile.defaultCurrency} only — never quote in USD.
+Default tone: ${profile.defaultTone}. Currency: ${profile.defaultCurrency} only — never quote in USD.
 
 Business one-liner: ${profile.pitchOneLiner}
 ${profile.fssaiNumber ? `FSSAI: ${profile.fssaiNumber}` : ""}
 ${profile.gstin ? `GSTIN: ${profile.gstin}` : ""}
 ${profile.certifications?.length ? `Certifications: ${profile.certifications.join(", ")}` : ""}
-
+${brandVoiceBlock}
 Active product catalog (use these exact SKUs / prices / MOQs — never invent numbers; if the inquiry asks for a SKU not listed, say you'll confirm and revert):
 ${productLines || "(catalog empty — defer specific pricing to a follow-up)"}
 
@@ -142,16 +149,70 @@ ${m.bodyText.slice(0, 2000)}`;
     })
     .join("\n\n");
 
+  const enrichment = (input.classification.extracted as Record<string, unknown>).enrichment as
+    | { companyName?: string | null; websiteSummary?: string | null; source?: string | null }
+    | undefined;
+
+  const enrichmentBlock = enrichment?.websiteSummary
+    ? `\nCompany website research (from ${enrichment.source ?? "web"}):\n${enrichment.websiteSummary}\n${enrichment.companyName ? `Detected company name: ${enrichment.companyName}` : ""}`
+    : "";
+
+  const memory = input.leadMemory;
+  const memoryHeader =
+    memory && (memory.contactName || memory.company || memory.stage || memory.leadType)
+      ? `\nWhat we know about this lead (CRM record):
+${memory.contactName ? `- Contact: ${memory.contactName}\n` : ""}${memory.company ? `- Company: ${memory.company}\n` : ""}${memory.leadType ? `- Lead type: ${memory.leadType}\n` : ""}${memory.stage ? `- Pipeline stage: ${memory.stage}\n` : ""}`
+      : "";
+
+  const memoryNotesBlock = memory?.notesForAi?.trim()
+    ? `\nINTERNAL NOTES from our sales team about this specific lead (treat as ground truth — these override any contradictory web research):
+---
+${memory.notesForAi.trim()}
+---\n`
+    : "";
+
+  const instructionsBlock = input.instructions
+    ? `\nAdditional instructions from the sales rep for THIS draft: ${input.instructions}\n\nApply these instructions when drafting the reply.`
+    : "";
+
+  const toneBlock = formatToneExamples(input.toneExamples ?? []);
+
   return `Thread so far:
 
 ${history}
-
+${memoryHeader}${memoryNotesBlock}
 AI classification of the most recent inbound:
 - Category: ${input.classification.category}
 - Lead type: ${input.classification.leadType}
 - Intent: ${input.classification.intent}
 - Detected language: ${input.classification.language}
 - Extracted: ${JSON.stringify(input.classification.extracted)}
+${enrichmentBlock}${toneBlock}${instructionsBlock}
 
-Now draft the reply.`;
+Now draft the reply. Lean on the internal notes above to personalise — if we already know this person's preferences, region, payment habits, prior conversations: use them. Use the company website research only if the notes don't cover something. If neither, proceed from the thread alone.`;
+}
+
+/**
+ * Few-shot block of recent (AI-original, team-sent) edit pairs. The drafter
+ * sees what its previous outputs looked like vs what got sent — implicit
+ * style guidance without fine-tuning. Examples are truncated to keep token
+ * cost bounded.
+ */
+function formatToneExamples(
+  examples: import("./types").ToneExample[],
+): string {
+  if (!examples || examples.length === 0) return "";
+
+  const blocks = examples.map((ex, i) => {
+    return `Example ${i + 1} (${ex.language}, team edited ${Math.round(ex.editRatio * 100)}%)
+AI originally wrote:
+${ex.originalBody.slice(0, 500)}
+What the team actually sent:
+${ex.finalBody.slice(0, 500)}`;
+  });
+
+  return `\nHOW THE TEAM EDITS DRAFTS (mirror these patterns — what they changed signals tone and preference):
+---
+${blocks.join("\n\n---\n\n")}
+---\n`;
 }

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <path d="M100 12c-32 0-58 14-70 36-13 24-7 54 14 75 17 17 39 25 60 22 24-3 47-19 60-44 11-22 11-44-2-62-13-19-37-27-62-27z" fill="#0a0a0a"/>
+  <g fill="#fff" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-style="italic">
+    <text x="100" y="92" text-anchor="middle" font-size="38" font-weight="700" letter-spacing="-1">white</text>
+    <text x="100" y="138" text-anchor="middle" font-size="38" font-weight="700" letter-spacing="-1">pops</text>
+  </g>
+  <path d="M58 108c-3-2-6-3-9-2 1 4 4 7 8 8 3 0 5-2 5-4-1-1-2-1-4-2z" fill="#fff"/>
+  <path d="M142 92c3-2 6-3 9-2-1 4-4 7-8 8-3 0-5-2-5-4 1-1 2-1 4-2z" fill="#fff"/>
+</svg>

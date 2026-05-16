@@ -1,9 +1,11 @@
-# White Pops CRM
+# Saathi Prime
 
-AI-assisted CRM for **White Pops**, a Makhana (fox nut) processing brand.
+AI relationship co-pilot. First tenant: **White Pops**, a Makhana (fox nut)
+processing brand. Designed to spin out as a standalone product for Indian
+B2B agri-processors over time.
 
 Spec: [`docs/PRD.md`](docs/PRD.md).
-Current state: **Milestone 0 — Foundation** (scaffold, auth, DB schema, shell UI).
+Current state: **Milestone 1 — Gmail OAuth + ingest** (scaffold, auth, encrypted token storage, Inngest worker, polling sync, Inbox list view).
 
 ---
 
@@ -141,14 +143,46 @@ docs/
 
 ---
 
+## Milestone 1 — Gmail setup
+
+To turn on Gmail ingest you need two more things beyond M0:
+
+### 1. A second Google OAuth client (for Gmail, not for sign-in)
+
+This needs `gmail.readonly`, `gmail.send`, `gmail.modify`, `gmail.compose` scopes — those are restricted and require Google's verification process for production use, but unverified is fine for development with the connecting account as a test user.
+
+1. Console → APIs & Services → **Library** → enable "Gmail API"
+2. Console → APIs & Services → **OAuth consent screen** → add `doks23@gmail.com` as a Test user
+3. Console → APIs & Services → **Credentials** → Create OAuth client ID (Web)
+4. Authorized redirect URI: `http://localhost:3000/api/gmail/callback` (and your Vercel URL later)
+5. Paste id/secret into `GMAIL_OAUTH_CLIENT_ID` / `GMAIL_OAUTH_CLIENT_SECRET` in `.env.local`
+
+### 2. Inngest local dev server
+
+In a second terminal:
+```bash
+npx inngest-cli@latest dev
+```
+It discovers `/api/inngest` on your Next.js server and runs the cron + event triggers locally. No keys needed for local dev.
+
+### Then
+
+1. `npm run db:push` (the schema gained `gmail_account` columns)
+2. `npm run dev`
+3. Sign in → open **Settings** → "Connect Gmail" → consent in Google → land back in Settings
+4. The first backfill (last 30 days, capped at 50 messages) runs automatically; subsequent polls run every 2 minutes
+5. Watch the **Inbox** screen — messages appear as they ingest
+
+---
+
 ## Roadmap
 
 See [`docs/PRD.md`](docs/PRD.md) §11. Milestones at a glance:
 
-- **M0** — Foundation (this milestone) ✅
-- **M1** — Gmail OAuth + ingest (polling)
-- **M2** — AI classification (Haiku)
-- **M3** — AI drafts (Sonnet) + Gmail Drafts + send
+- **M0** — Foundation ✅
+- **M1** — Gmail OAuth + ingest (polling) ✅
+- **M2** — AI classification (Gemini / OpenAI / Ollama)
+- **M3** — AI drafts + Gmail Drafts + send
 - **M4** — Pipeline, team assignment, catalog UI, follow-ups
 - **M5** — Reporting dashboard
 - **M6** — Polish & private beta

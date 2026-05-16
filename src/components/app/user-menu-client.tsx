@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -58,6 +59,7 @@ export function UserMenuClient({
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuGroup>
         <DropdownMenuLabel>
           <div className="flex flex-col">
             <span className="text-sm">{name ?? "Unknown"}</span>
@@ -67,6 +69,7 @@ export function UserMenuClient({
             </Badge>
           </div>
         </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => signOut({ callbackUrl: "/login" })}

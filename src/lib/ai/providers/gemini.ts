@@ -86,7 +86,14 @@ export const geminiProvider: LlmProvider = {
     });
     const text = response.text;
     if (!text) throw new Error("Gemini returned empty classification");
-    return JSON.parse(text) as ClassifyOutput;
+    const parsed = JSON.parse(text) as ClassifyOutput;
+    if (response.usageMetadata) {
+      parsed.tokensUsed = {
+        input: response.usageMetadata.promptTokenCount ?? 0,
+        output: response.usageMetadata.candidatesTokenCount ?? 0,
+      };
+    }
+    return parsed;
   },
 
   async draft(input: DraftInput, modelId: string): Promise<DraftOutput> {

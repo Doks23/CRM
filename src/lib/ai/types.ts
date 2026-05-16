@@ -50,6 +50,8 @@ export interface ClassifyOutput {
     urgency?: Urgency;
   };
   reason: string;
+  /** Surfaced by every provider so the telemetry layer can compute cost. */
+  tokensUsed?: { input: number; output: number };
 }
 
 export interface DraftMessage {
@@ -67,6 +69,18 @@ export interface DraftBusinessProfile {
   certifications?: string[];
   defaultCurrency: string;
   defaultTone: string;
+  /** Owner-curated freeform "voice file" — sample phrases, do's and don'ts. */
+  brandVoice?: string;
+}
+
+export interface DraftLeadMemory {
+  /** Freeform notes the owner / sales team wrote about this specific lead. */
+  notesForAi?: string;
+  /** Useful denormalised context — saves the AI from re-reading the lead row. */
+  contactName?: string;
+  company?: string;
+  stage?: string;
+  leadType?: string;
 }
 
 export interface DraftProduct {
@@ -80,11 +94,25 @@ export interface DraftProduct {
   stockNote?: string;
 }
 
+export interface ToneExample {
+  language: LeadLanguage;
+  originalBody: string;
+  finalBody: string;
+  /** 0..1 — proportion of characters changed between original and final. */
+  editRatio: number;
+}
+
 export interface DraftInput {
   threadHistory: DraftMessage[];
   classification: ClassifyOutput;
   businessProfile: DraftBusinessProfile;
   products: DraftProduct[];
+  /** Per-lead memory: the single biggest personalisation lever. */
+  leadMemory?: DraftLeadMemory;
+  /** Per-call instructions from the sales rep ("be firmer on payment terms"). */
+  instructions?: string;
+  /** Recent AI-vs-sent edit pairs. Few-shot examples for tone-learning. */
+  toneExamples?: ToneExample[];
 }
 
 export interface DraftOutput {

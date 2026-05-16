@@ -1,6 +1,7 @@
 import "dotenv/config";
+import { eq } from "drizzle-orm";
 import { db } from "../src/db";
-import { allowlist, businessProfile, products } from "../src/db/schema";
+import { businessProfile, products } from "../src/db/schema";
 
 async function main() {
   const ownerEmail = process.env.SEED_OWNER_EMAIL?.toLowerCase();
@@ -11,20 +12,39 @@ async function main() {
   }
 
   console.log(`Seeding owner: ${ownerEmail}`);
-  await db
-    .insert(allowlist)
-    .values({ email: ownerEmail, role: "owner" })
-    .onConflictDoNothing();
+  const existingProfile = await db.query.businessProfile.findFirst();
+  if (existingProfile) {
+    const current = (existingProfile.allowedEmails ?? []) as Array<{
+      email: string;
+      role: "owner" | "sales" | "production";
+    }>;
+    if (!current.some((e) => e.email === ownerEmail)) {
+      await db
+        .update(businessProfile)
+        .set({
+          allowedEmails: [
+            ...current,
+            { email: ownerEmail, role: "owner" as const },
+          ],
+        })
+        .where(eq(businessProfile.id, existingProfile.id));
+      console.log("  added to allowed_emails");
+    } else {
+      console.log("  already in allowed_emails");
+    }
+  }
 
   console.log("Seeding business profile…");
-  const existingProfile = await db.query.businessProfile.findFirst();
-  if (!existingProfile) {
+  const profile = await db.query.businessProfile.findFirst();
+  if (!profile) {
     await db.insert(businessProfile).values({
       companyName: "White Pops",
       defaultTone: "warm-professional",
       defaultCurrency: "INR",
       pitchOneLiner:
         "White Pops — premium Makhana (fox nut) processor. Bulk, retail, and export-grade supply.",
+      inboxKeywords: ["makhana", "white pops", "fox nut"],
+      allowedEmails: [{ email: ownerEmail, role: "owner" as const }],
       followUpInfoSentDays: 4,
       followUpNegotiationDays: 3,
     });

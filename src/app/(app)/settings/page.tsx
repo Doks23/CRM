@@ -1,184 +1,220 @@
-import { auth } from "@/auth";
+import Link from "next/link";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Building2,
+  Mail,
+  Sparkles,
+  Users,
+  Package,
+  MessageSquare,
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+
+import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
-import { defaultModels, providerModels } from "@/lib/ai";
+import { Card } from "@/components/ui/card";
+import { db } from "@/db";
+import { getBusinessProfile } from "@/lib/business-profile";
+import { getAiCostCapStatus } from "@/lib/ai";
+
+export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const session = await auth();
-  const isOwner = session?.user.role === "owner";
+  const [session, profile, gmailAccount, capStatus] = await Promise.all([
+    auth(),
+    getBusinessProfile(),
+    db.query.gmailAccount.findFirst(),
+    getAiCostCapStatus(),
+  ]);
+
+  const isOwner = session?.user?.role === "owner";
+
+  const sections = [
+    {
+      href: "/settings/profile",
+      icon: Building2,
+      title: "Company & voice",
+      desc: "Brand identity, FSSAI / GSTIN, tone, and the pitch Saathi uses in every draft.",
+      badge: profile.companyName ? profile.companyName : "Not configured",
+      status: (profile.companyName ? "ok" : "warn") as "ok" | "warn",
+    },
+    {
+      href: "/settings/gmail",
+      icon: Mail,
+      title: "Gmail connection",
+      desc: "Shared inbox the CRM reads from and drafts back into.",
+      badge: gmailAccount ? gmailAccount.email : "Not connected",
+      status: (gmailAccount ? "ok" : "warn") as "ok" | "warn",
+    },
+    {
+      href: "/settings/ai",
+      icon: Sparkles,
+      title: "AI providers",
+      desc: "Choose the LLM that classifies emails and the LLM that writes drafts.",
+      badge: profile.classifierProvider
+        ? `${profile.classifierProvider} · ${profile.drafterProvider ?? ""}`
+        : "Default providers",
+      status: "ok" as const,
+    },
+    {
+      href: "/settings/team",
+      icon: Users,
+      title: "Team & roles",
+      desc: "Invite team members, set roles (Owner / Sales / Production), and manage access.",
+      badge: "Manage",
+      status: "ok" as const,
+    },
+    {
+      href: "/settings/products",
+      icon: Package,
+      title: "Products & SKUs",
+      desc: "Catalog fed to the AI when drafting replies — grades, MOQ, pricing.",
+      badge: "Manage",
+      status: "ok" as const,
+    },
+    {
+      href: "/settings/greetings",
+      icon: MessageSquare,
+      title: "Greetings & signatures",
+      desc: "Opening lines and closings per language. Saathi samples these when drafting.",
+      badge: "Manage",
+      status: "ok" as const,
+    },
+  ];
 
   return (
-    <div className="p-8 max-w-3xl space-y-5">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Connections, team, catalog, AI providers.
+        <h2 className="serif text-[26px] leading-tight -tracking-[0.015em]">
+          Overview
+        </h2>
+        <p className="text-[13px] text-muted-foreground mt-1">
+          Tune Saathi to your business. Click any section to edit.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Gmail connection</CardTitle>
-            <Badge variant="outline" className="font-normal">
-              Milestone 1
-            </Badge>
-          </div>
-          <CardDescription>
-            Shared inbox the CRM reads from and drafts back into.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {isOwner
-              ? "Owner-only action. The Connect button lands here in Milestone 1. Initial account: doks23@gmail.com."
-              : "Only the Owner can connect the shared Gmail account."}
-          </p>
-        </CardContent>
-      </Card>
+      {/* Quick status */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <QuickStat
+          label="Gmail"
+          value={gmailAccount ? "Connected" : "Not connected"}
+          tone={gmailAccount ? "pos" : "warn"}
+        />
+        <QuickStat
+          label="AI daily cap"
+          value={
+            capStatus.unlimited
+              ? "No cap set"
+              : `₹${capStatus.spentInr.toFixed(0)} / ₹${capStatus.capInr.toFixed(0)}`
+          }
+          tone={
+            !capStatus.unlimited && capStatus.spentInr >= capStatus.capInr
+              ? "warn"
+              : "pos"
+          }
+        />
+        <QuickStat
+          label="Your role"
+          value={session?.user?.role ?? "—"}
+          tone="pos"
+        />
+      </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>AI providers</CardTitle>
-            <Badge variant="outline" className="font-normal">
-              Milestones 2–3
-            </Badge>
-          </div>
-          <CardDescription>
-            Pick the LLM that classifies emails and the LLM that drafts replies.
-            Swap freely; no code change required.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <ProviderCard
-              label="Classifier"
-              provider={defaultModels.classifier.provider}
-              model={defaultModels.classifier.model}
-              note="Cheap + fast; tags every inbound email."
-            />
-            <ProviderCard
-              label="Drafter"
-              provider={defaultModels.drafter.provider}
-              model={defaultModels.drafter.model}
-              note="Higher-quality model; writes the reply you review."
-            />
-          </div>
+      {/* Section cards */}
+      <div className="space-y-2">
+        {sections.map((s) => {
+          if (!isOwner && ["gmail", "ai"].some((k) => s.href.includes(k))) {
+            return null;
+          }
+          return <SectionCard key={s.href} {...s} />;
+        })}
+      </div>
 
-          <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground space-y-1.5">
-            <div className="font-medium text-foreground">Available providers</div>
-            {(["gemini", "openai", "ollama"] as const).map((p) => (
-              <div key={p} className="flex flex-wrap gap-1 items-center">
-                <span className="capitalize font-medium text-foreground w-16">
-                  {p}
-                </span>
-                <span>classifier:</span>
-                {providerModels[p].classifier.map((m) => (
-                  <code
-                    key={m}
-                    className="px-1 py-0.5 rounded bg-background text-[10px]"
-                  >
-                    {m}
-                  </code>
-                ))}
-                <span className="ml-1">drafter:</span>
-                {providerModels[p].drafter.map((m) => (
-                  <code
-                    key={m}
-                    className="px-1 py-0.5 rounded bg-background text-[10px]"
-                  >
-                    {m}
-                  </code>
-                ))}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Team members</CardTitle>
-            <Badge variant="outline" className="font-normal">
-              Milestone 4
-            </Badge>
-          </div>
-          <CardDescription>
-            Invite team members and assign roles (Owner / Sales / Production).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            For now, add team emails directly to the{" "}
-            <code className="px-1 py-0.5 rounded bg-muted text-xs">
-              allowlist
-            </code>{" "}
-            table via the seed script.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Product catalog</CardTitle>
-            <Badge variant="outline" className="font-normal">
-              Milestone 4
-            </Badge>
-          </div>
-          <CardDescription>
-            SKUs, grades, MOQ, pricing — fed into the AI when drafting replies.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Business profile</CardTitle>
-            <Badge variant="outline" className="font-normal">
-              Milestone 2
-            </Badge>
-          </div>
-          <CardDescription>
-            Company name, GSTIN, FSSAI, certifications, default tone — used in
-            AI prompts.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      {!isOwner && (
+        <p className="text-[12px] text-muted-foreground px-1">
+          Gmail and AI settings are visible to Owners only.
+        </p>
+      )}
     </div>
   );
 }
 
-function ProviderCard({
+function QuickStat({
   label,
-  provider,
-  model,
-  note,
+  value,
+  tone,
 }: {
   label: string;
-  provider: string;
-  model: string;
-  note: string;
+  value: string;
+  tone: "pos" | "warn" | "default";
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-        <Badge className="capitalize">{provider}</Badge>
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
+      <div className="text-[10.5px] font-semibold uppercase tracking-[0.10em] text-muted-foreground mb-1">
+        {label}
       </div>
-      <div className="font-mono text-sm">{model}</div>
-      <div className="text-xs text-muted-foreground mt-1.5">{note}</div>
+      <div
+        className={`text-[14px] font-semibold ${
+          tone === "pos"
+            ? "text-pos"
+            : tone === "warn"
+              ? "text-warn"
+              : "text-foreground"
+        }`}
+      >
+        {value}
+      </div>
     </div>
+  );
+}
+
+function SectionCard({
+  href,
+  icon: Icon,
+  title,
+  desc,
+  badge,
+  status,
+}: {
+  href: string;
+  icon: typeof Building2;
+  title: string;
+  desc: string;
+  badge: string;
+  status: "ok" | "warn";
+}) {
+  return (
+    <Link href={href} className="block group">
+      <Card className="px-5 py-4 gap-0 hover:border-primary/30 transition-colors">
+        <div className="flex items-center gap-4">
+          <div className="size-9 rounded-lg bg-surface-2 grid place-items-center shrink-0">
+            <Icon className="size-4 text-muted-foreground" strokeWidth={1.5} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[14px] font-semibold">{title}</span>
+              <Badge
+                variant="outline"
+                className="text-[11px] font-normal rounded"
+              >
+                {badge}
+              </Badge>
+            </div>
+            <p className="text-[12.5px] text-muted-foreground mt-0.5 leading-[1.4]">
+              {desc}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {status === "ok" ? (
+              <CheckCircle2 className="size-4 text-pos" />
+            ) : (
+              <AlertCircle className="size-4 text-warn" />
+            )}
+            <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </div>
+        </div>
+      </Card>
+    </Link>
   );
 }

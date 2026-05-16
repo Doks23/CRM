@@ -1,7 +1,13 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { sql } from "drizzle-orm";
+
+import { db } from "@/db";
+import { emailMessages, leads } from "@/db/schema";
 import { Sidebar } from "@/components/app/sidebar";
-import { UserMenu } from "@/components/app/user-menu";
+import { Topbar } from "@/components/app/topbar";
+
+const INACTIVE_STAGES = new Set(["won", "lost", "nurture", "needs_review"]);
 
 export default async function AppLayout({
   children,
@@ -12,14 +18,51 @@ export default async function AppLayout({
   if (!session?.user) redirect("/login");
   if (!session.user.active) redirect("/login?error=deactivated");
 
+  const initial =
+    (session.user.name ?? session.user.email ?? "?")
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "?";
+
+  // Sidebar badge counts — cheap aggregates, run in parallel.
+  const [inboxRow, stageRows] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(distinct gmail_thread_id)`.mapWith(Number) })
+      .from(emailMessages)
+      .where(
+        sql`(
+          select m2.direction from email_message m2
+          where m2.gmail_thread_id = ${emailMessages.gmailThreadId}
+          order by m2.received_at desc limit 1
+        ) = 'inbound'
+        and (
+          select m2.ai_category from email_message m2
+          where m2.gmail_thread_id = ${emailMessages.gmailThreadId}
+          order by m2.received_at desc limit 1
+        ) not in ('spam', 'newsletter')`,
+      ),
+    db
+      .select({ stage: leads.stage, count: sql<number>`count(*)`.mapWith(Number) })
+      .from(leads)
+      .groupBy(leads.stage),
+  ]);
+
+  const inboxCount = inboxRow[0]?.n ?? 0;
+  const pipelineCount = stageRows
+    .filter((r) => !INACTIVE_STAGES.has(r.stage))
+    .reduce((s, r) => s + r.count, 0);
+
   return (
-    <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <Sidebar />
+    <div className="flex min-h-screen bg-background">
+      <Sidebar
+        userInitial={initial}
+        userName={session.user.name ?? session.user.email ?? "User"}
+        userEmail={session.user.email ?? ""}
+        inboxCount={inboxCount}
+        pipelineCount={pipelineCount}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b bg-white dark:bg-zinc-950 flex items-center justify-between px-6">
-          <div /> {/* page-title slot for later */}
-          <UserMenu />
-        </header>
+        <Topbar />
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>

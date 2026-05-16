@@ -9,7 +9,7 @@ import {
   accounts,
   sessions,
   verificationTokens,
-  allowlist,
+  type AllowedEmail,
 } from "./db/schema";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -25,43 +25,72 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
 
-    async signIn({ user }) {
+    async signIn({ user, profile: googleProfile }) {
       const email = user.email?.toLowerCase();
       if (!email) return false;
 
-      const allowed = await db.query.allowlist.findFirst({
-        where: eq(allowlist.email, email),
-      });
-      if (!allowed) return false;
+      const profile = await db.query.businessProfile.findFirst();
+      if (!profile?.allowedEmails) return false;
 
-      // Sync role from allowlist onto the user row (idempotent).
+      const entry = (profile.allowedEmails as AllowedEmail[]).find(
+        (e) => e.email === email,
+      );
+      if (!entry) return false;
+
       const existing = await db.query.users.findFirst({
         where: eq(users.email, email),
       });
+
       if (existing) {
-        if (existing.role !== allowed.role) {
+        if (existing.role !== entry.role) {
           await db
             .update(users)
-            .set({ role: allowed.role })
+            .set({ role: entry.role })
             .where(eq(users.id, existing.id));
         }
-        if (!existing.active) return false;
+        // Blocked until owner approves.
+        if (!existing.active) return "/login?error=pending_approval";
+      } else if (entry.role !== "owner") {
+        // New non-owner: pre-create with active=false so owner must approve.
+        await db
+          .insert(users)
+          .values({
+            id: crypto.randomUUID(),
+            email,
+            name: (googleProfile as Record<string, unknown>)?.name as string ?? null,
+            image: (googleProfile as Record<string, unknown>)?.picture as string ?? null,
+            role: entry.role,
+            active: false,
+          })
+          .onConflictDoNothing();
+        return "/login?error=pending_approval";
       }
 
       return true;
     },
 
-    async jwt({ token, user }) {
-      // On first sign-in `user` is populated; afterwards we read from token.
-      if (user?.email) {
+    async jwt({ token }) {
+      const email = token.email as string | undefined;
+      if (email) {
         const dbUser = await db.query.users.findFirst({
-          where: eq(users.email, user.email.toLowerCase()),
+          where: eq(users.email, email.toLowerCase()),
           columns: { id: true, role: true, active: true },
         });
         if (dbUser) {
           token.userId = dbUser.id;
           token.role = dbUser.role;
           token.active = dbUser.active;
+        }
+
+        // Sync role from allowedEmails in case the user was created by the
+        // adapter with the default role before signIn callback could update it.
+        const profile = await db.query.businessProfile.findFirst();
+        const entry = (profile?.allowedEmails as AllowedEmail[] | undefined)?.find(
+          (e) => e.email === email.toLowerCase(),
+        );
+        if (entry && dbUser && dbUser.role !== entry.role) {
+          await db.update(users).set({ role: entry.role }).where(eq(users.id, dbUser.id));
+          token.role = entry.role;
         }
       }
       return token;

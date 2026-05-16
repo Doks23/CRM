@@ -16,37 +16,38 @@ export default async function LoginPage({
   const errorMessage =
     error === "deactivated"
       ? "Your account has been deactivated. Please contact the owner."
-      : error === "AccessDenied"
-        ? "This Google account is not on the invite list."
-        : error
-          ? "Sign-in failed. Please try again."
-          : null;
+      : error === "pending_approval"
+        ? "Your account is pending approval. The owner will activate it shortly."
+        : error === "AccessDenied"
+          ? "This Google account is not on the invite list."
+          : error
+            ? "Sign-in failed. Please try again."
+            : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-emerald-50/30 to-white dark:from-zinc-950 dark:via-emerald-950/20 dark:to-zinc-950 p-4">
       <div className="w-full max-w-sm">
-        <div className="flex justify-center mb-8">
-          <BrandMark size={64} withWordmark={false} />
+        <div className="flex justify-center mb-7">
+          <BrandMark size={80} withWordmark layout="stacked" />
         </div>
 
-        <div className="text-center mb-7">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            White Pops CRM
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            Sign in with the Google account on your invite.
-          </p>
-        </div>
+        <p className="text-center text-meta mb-5">
+          Sign in with the Google account on your invite.
+        </p>
 
         <Card className="shadow-sm border-zinc-200/80 dark:border-zinc-800/80">
           <CardContent className="pt-6 pb-6 px-6">
             <form
               action={async () => {
                 "use server";
-                await signIn("google", { redirectTo: "/inbox" });
+                await signIn("google", { redirectTo: "/dashboard" });
               }}
             >
-              <Button type="submit" className="w-full h-11 font-medium" size="lg">
+              <Button
+                type="submit"
+                className="w-full h-11 font-medium"
+                size="lg"
+              >
                 <GoogleGlyph />
                 Continue with Google
               </Button>
@@ -62,7 +63,7 @@ export default async function LoginPage({
 
         <p className="mt-6 text-xs text-center text-muted-foreground">
           Only invited team members can access. The owner manages the allowlist
-          in Settings.
+          in <span className="text-foreground">Settings → Team</span>.
         </p>
       </div>
     </div>
