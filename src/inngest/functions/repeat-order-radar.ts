@@ -53,7 +53,7 @@ export const repeatOrderRadar = inngest.createFunction(
         .from(leads)
         .where(
           and(
-            eq(leads.stage, "won"),
+            sql`${leads.stage} in ('won', 'dispatched')`,
             sql`${leads.lastActivityAt} < ${cutoff}`,
             or(
               isNull(leads.lastReorderNudgeAt),

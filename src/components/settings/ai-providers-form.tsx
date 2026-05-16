@@ -138,8 +138,8 @@ function ProviderRow({
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border/60 flex items-center gap-2">
-        <h3 className="text-[13px] font-semibold">{title}</h3>
-        <Badge variant="outline" className="text-[10px] py-0 h-4 capitalize">
+        <h3 className="text-[14px] font-semibold">{title}</h3>
+        <Badge variant="outline" className="text-[11px] py-0 h-4 capitalize">
           {provider}
         </Badge>
       </div>
@@ -191,7 +191,7 @@ function Select({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "flex h-8 w-full rounded-md border border-input bg-background px-2 text-[13px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          "flex h-8 w-full rounded-md border border-input bg-background px-2 text-[14px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           capitalize && "capitalize",
           mono && "font-mono",
         )}

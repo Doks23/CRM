@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -36,10 +38,10 @@ export function BrandMark({
       </div>
       {withWordmark && (
         <div className="leading-tight">
-          <div className="text-[15px] font-semibold -tracking-[0.01em]">
+          <div className="text-[16px] font-semibold -tracking-[0.01em]">
             White Pops
           </div>
-          <div className="text-[10.5px] font-medium tracking-[0.10em] uppercase text-muted-foreground mt-px">
+          <div className="text-[11.5px] font-medium tracking-[0.10em] uppercase text-muted-foreground mt-px">
             Saathi Prime
           </div>
         </div>

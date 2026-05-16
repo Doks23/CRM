@@ -7,7 +7,7 @@ import {
   type InboxFilter,
 } from "@/lib/queries/inbox";
 
-const VALID_FILTERS: InboxFilter[] = ["all", "needs_reply", "drafts_ready"];
+const VALID_FILTERS: InboxFilter[] = ["all", "new", "draft"];
 
 /**
  * GET /api/inbox/threads
@@ -15,7 +15,7 @@ const VALID_FILTERS: InboxFilter[] = ["all", "needs_reply", "drafts_ready"];
  * Same data the desktop inbox renders via SSR — exposed as JSON so the
  * future mobile client can consume it directly without re-implementing the
  * SQL. Query params:
- *   filter = "all" | "needs_reply" | "drafts_ready"   (default "all")
+ *   filter = "all" | "new" | "draft"                   (default "all")
  *   q       = search string                            (optional)
  *   limit   = max rows                                 (default 100)
  *   counts  = "1" to include per-tab counts in the response

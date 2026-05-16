@@ -30,10 +30,10 @@ function initials(name: string): string {
 }
 
 const SIZE_CLASSES = {
-  xs: "size-5 text-[9px]",
-  sm: "size-6 text-[10px]",
-  md: "size-8 text-[12px]",
-  lg: "size-11 text-[14px]",
+  xs: "size-5 text-[10px]",
+  sm: "size-6 text-[11px]",
+  md: "size-8 text-[13px]",
+  lg: "size-11 text-[15px]",
   xl: "size-16 text-[22px]",
 } as const;
 

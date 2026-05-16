@@ -175,57 +175,47 @@ export default async function ReportsPage() {
   const replyRate =
     totalInbound > 0 ? Math.round((totalOutbound / totalInbound) * 100) : 0;
 
-  const byStage = Object.fromEntries(stageRows.map((r) => [r.stage, r.count]));
+  const stageAlias: Record<string, string> = {
+    po_received: "po",
+    won: "dispatched",
+    lost: "ignored",
+    qualified: "info_sent",
+    needs_review: "new",
+    nurture: "ignored",
+  };
+  const byStageNorm: Record<string, number> = {};
+  for (const r of stageRows) {
+    const key = stageAlias[r.stage] ?? r.stage;
+    byStageNorm[key] = (byStageNorm[key] ?? 0) + r.count;
+  }
+  const byStage = byStageNorm;
   const totalLeads = stageRows.reduce((s, r) => s + r.count, 0);
 
   const FUNNEL_DEF = [
     {
       label: "All Leads",
-      stages: [
-        "new",
-        "needs_review",
-        "qualified",
-        "info_sent",
-        "negotiation",
-        "po_received",
-        "dispatched",
-        "won",
-        "nurture",
-      ],
+      stages: ["new", "info_sent", "negotiation", "po", "dispatched"],
       color: "var(--stage-1)",
     },
     {
       label: "Engaged",
-      stages: [
-        "needs_review",
-        "qualified",
-        "info_sent",
-        "negotiation",
-        "po_received",
-        "dispatched",
-        "won",
-      ],
+      stages: ["info_sent", "negotiation", "po", "dispatched"],
       color: "var(--stage-2)",
     },
     {
       label: "Qualified",
-      stages: ["qualified", "info_sent", "negotiation", "po_received", "dispatched", "won"],
-      color: "var(--stage-3)",
-    },
-    {
-      label: "Info Sent",
-      stages: ["info_sent", "negotiation", "po_received", "dispatched", "won"],
+      stages: ["info_sent", "negotiation", "po", "dispatched"],
       color: "var(--stage-4)",
     },
     {
       label: "Negotiation",
-      stages: ["negotiation", "po_received", "dispatched", "won"],
+      stages: ["negotiation", "po", "dispatched"],
       color: "var(--stage-5)",
     },
     {
-      label: "Won",
-      stages: ["won"],
-      color: "var(--stage-7)",
+      label: "Closed",
+      stages: ["dispatched"],
+      color: "var(--stage-2)",
     },
   ];
   const funnel = FUNNEL_DEF.map((f) => ({
@@ -408,7 +398,7 @@ function ReportsHero() {
         <h1 className="serif text-[30px] leading-tight -tracking-[0.015em]">
           Reports
         </h1>
-        <div className="text-[13px] text-muted-foreground mt-1">
+        <div className="text-[14px] text-muted-foreground mt-1">
           Inbox health, lead funnel, AI quality and cost ·{" "}
           <em className="serif italic text-foreground">last 14 days</em>
         </div>
@@ -418,7 +408,7 @@ function ReportsHero() {
           {["24h", "7d", "14d", "30d", "QTD"].map((r) => (
             <button
               key={r}
-              className={`h-7 px-3 text-[12px] rounded-md font-medium ${
+              className={`h-7 px-3 text-[13px] rounded-md font-medium ${
                 r === "14d"
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-foreground/5"
@@ -488,11 +478,11 @@ function BigStats({
       {stats.map((s) => (
         <Card key={s.label} className="p-4 gap-2">
           <div className="flex justify-between items-baseline">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-muted-foreground">
+            <span className="text-[12px] font-semibold uppercase tracking-[0.10em] text-muted-foreground">
               {s.label}
             </span>
             <span
-              className={`text-[11px] font-semibold ${
+              className={`text-[12px] font-semibold ${
                 s.delta === "—"
                   ? "text-muted-foreground"
                   : s.good
@@ -523,10 +513,10 @@ function FunnelCard({
     <Card className="p-5 gap-3">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <div>
-          <div className="font-heading text-[14px] font-semibold">
+          <div className="font-heading text-[15px] font-semibold">
             Conversion funnel
           </div>
-          <div className="text-[12px] text-muted-foreground mt-0.5">
+          <div className="text-[13px] text-muted-foreground mt-0.5">
             All leads → Won ·{" "}
             <strong className="text-foreground/85">{conversionPct}% conversion</strong>
           </div>
@@ -549,21 +539,21 @@ function FunnelCard({
                   className="size-2 rounded-full"
                   style={{ background: s.color }}
                 />
-                <span className="text-[12.5px] font-medium">{s.label}</span>
+                <span className="text-[13.5px] font-medium">{s.label}</span>
               </div>
               <div className="flex-1 relative h-7 bg-surface-2 rounded-md overflow-hidden">
                 <div
-                  className="h-full flex items-center pl-2.5 text-white tabular text-[12px] font-semibold"
+                  className="h-full flex items-center pl-2.5 text-white tabular text-[13px] font-semibold"
                   style={{ width: `${Math.max(pct, 2)}%`, background: s.color, opacity: 0.9 }}
                 >
                   {s.value > 0 ? s.value : ""}
                 </div>
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 tabular text-[11px] font-medium text-muted-foreground">
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 tabular text-[12px] font-medium text-muted-foreground">
                   {pct.toFixed(0)}%
                 </span>
               </div>
               <div
-                className={`w-16 text-right text-[11px] ${
+                className={`w-16 text-right text-[12px] ${
                   i > 0
                     ? drop > 50
                       ? "text-warn"
@@ -578,7 +568,7 @@ function FunnelCard({
         })}
       </div>
       {funnel[0].value === 0 && (
-        <div className="mt-2 flex gap-2.5 px-3.5 py-2.5 rounded-[10px] bg-surface-2 text-[12px] text-muted-foreground">
+        <div className="mt-2 flex gap-2.5 px-3.5 py-2.5 rounded-[10px] bg-surface-2 text-[13px] text-muted-foreground">
           <Sparkles className="size-3.5 shrink-0 mt-0.5" strokeWidth={1.8} />
           <div>No leads yet. Start syncing your inbox to populate the funnel.</div>
         </div>
@@ -609,14 +599,14 @@ function InboxHealth({
     <Card className="p-5 gap-3">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <div>
-          <div className="font-heading text-[14px] font-semibold">
+          <div className="font-heading text-[15px] font-semibold">
             Inbox health
           </div>
-          <div className="text-[12px] text-muted-foreground mt-0.5">
+          <div className="text-[13px] text-muted-foreground mt-0.5">
             Inbound · Replies sent · per day · last 14 days
           </div>
         </div>
-        <div className="flex gap-3 text-[11px] text-muted-foreground">
+        <div className="flex gap-3 text-[12px] text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-primary" /> Replies
           </div>
@@ -641,11 +631,11 @@ function InboxHealth({
                 style={{ height: `${((outboundDaily[i] ?? 0) / max) * 100}%` }}
               />
             </div>
-            <div className="text-[9.5px] text-muted-foreground">{labels[i]}</div>
+            <div className="text-[10.5px] text-muted-foreground">{labels[i]}</div>
           </div>
         ))}
       </div>
-      <div className="mt-2 pt-3 border-t border-border grid grid-cols-2 gap-2 text-[12px]">
+      <div className="mt-2 pt-3 border-t border-border grid grid-cols-2 gap-2 text-[13px]">
         <KV k="Total inbound" v={String(totalInbound)} />
         <KV k="Total replied" v={String(totalOutbound)} />
         <KV k="Reply rate" v={fmtPct(replyRate)} pos={replyRate >= 70} />
@@ -684,20 +674,20 @@ function SourceMix({
     : [{ label: "No data", value: 1, color: "var(--muted)" }];
   return (
     <Card className="p-5 gap-3">
-      <div className="font-heading text-[14px] font-semibold">
+      <div className="font-heading text-[15px] font-semibold">
         Lead source mix
       </div>
       <div className="flex items-center gap-4">
         <Donut segments={displaySources} size={120} thickness={16}>
           <span className="serif tabular text-[26px]">{totalLeads}</span>
-          <span className="text-[10px] text-muted-foreground">leads</span>
+          <span className="text-[11px] text-muted-foreground">leads</span>
         </Donut>
         <div className="flex-1 space-y-1.5">
           {sources.length === 0 ? (
-            <div className="text-[12px] text-muted-foreground">No leads yet</div>
+            <div className="text-[13px] text-muted-foreground">No leads yet</div>
           ) : (
             sources.map((s) => (
-              <div key={s.label} className="flex items-center gap-2 text-[12px]">
+              <div key={s.label} className="flex items-center gap-2 text-[13px]">
                 <span
                   className="size-2 rounded-full"
                   style={{ background: s.color }}
@@ -737,7 +727,7 @@ function AICost({
   return (
     <Card className="p-5 gap-3">
       <div className="flex items-baseline justify-between">
-        <div className="font-heading text-[14px] font-semibold">
+        <div className="font-heading text-[15px] font-semibold">
           AI cost · daily
         </div>
         <Badge className={underCap ? "bg-pos-tint text-pos border-transparent" : "bg-warn-tint text-warn border-transparent"}>
@@ -746,7 +736,7 @@ function AICost({
       </div>
       <div className="flex items-baseline gap-2">
         <span className="serif tabular text-[30px]">{fmtInr(todayCost)}</span>
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-[13px] text-muted-foreground">
           {unlimited ? "today · no cap set" : `of ${fmtInr(capInr)} today`}
         </span>
       </div>
@@ -759,7 +749,7 @@ function AICost({
         </div>
       )}
       <Sparkline data={sparkData} width={300} height={56} />
-      <div className="text-[11px] text-muted-foreground flex justify-between">
+      <div className="text-[12px] text-muted-foreground flex justify-between">
         <span>
           {calls} call{calls !== 1 ? "s" : ""} · {(tokens / 1000).toFixed(1)}k tokens today
         </span>
@@ -810,11 +800,11 @@ function DraftQuality({
   ];
   return (
     <Card className="p-5 gap-3">
-      <div className="font-heading text-[14px] font-semibold">Draft quality</div>
+      <div className="font-heading text-[15px] font-semibold">Draft quality</div>
       <div className="grid grid-cols-2 gap-2.5">
         {metrics.map((m) => (
           <div key={m.label} className="px-3 py-2.5 bg-surface-2 rounded-[10px]">
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               {m.label}
             </div>
             <div
@@ -828,12 +818,12 @@ function DraftQuality({
             >
               {m.v}
             </div>
-            <div className="text-[10.5px] text-muted-foreground">{m.sub}</div>
+            <div className="text-[11.5px] text-muted-foreground">{m.sub}</div>
           </div>
         ))}
       </div>
       {total === 0 && (
-        <div className="mt-1 px-3 py-2.5 rounded-[10px] bg-surface-2 text-[11.5px] text-muted-foreground leading-[1.45]">
+        <div className="mt-1 px-3 py-2.5 rounded-[10px] bg-surface-2 text-[12.5px] text-muted-foreground leading-[1.45]">
           No drafts yet. Once Saathi generates replies, quality metrics will appear here.
         </div>
       )}
@@ -857,17 +847,17 @@ function Leaderboard({
   return (
     <Card className="p-0 gap-0">
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border">
-        <span className="font-heading text-[14px] font-semibold">
+        <span className="font-heading text-[15px] font-semibold">
           Top accounts · by activity
         </span>
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-[13px] text-muted-foreground">
           {topLeads.length} shown
         </span>
         <Button variant="ghost" size="xs" className="ml-auto">
           View all <ChevronRight className="size-3" />
         </Button>
       </div>
-      <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_0.5fr] px-5 py-2 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-muted-foreground border-b border-border">
+      <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_0.5fr] px-5 py-2 text-[11.5px] font-semibold uppercase tracking-[0.10em] text-muted-foreground border-b border-border">
         <div>Account</div>
         <div>Stage</div>
         <div>Messages</div>
@@ -876,7 +866,7 @@ function Leaderboard({
         <div />
       </div>
       {topLeads.length === 0 ? (
-        <div className="px-5 py-8 text-center text-[13px] text-muted-foreground">
+        <div className="px-5 py-8 text-center text-[14px] text-muted-foreground">
           No leads yet.
         </div>
       ) : (
@@ -890,23 +880,23 @@ function Leaderboard({
           return (
             <div
               key={r.id}
-              className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_0.5fr] items-center px-5 py-2.5 text-[13px] [&:not(:last-child)]:border-b border-border"
+              className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_0.5fr] items-center px-5 py-2.5 text-[14px] [&:not(:last-child)]:border-b border-border"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <CompanyLogo name={name} size={26} />
                 <span className="font-semibold truncate">{name}</span>
                 {isHot && (
-                  <span className="inline-flex items-center gap-0.5 h-4 px-1 rounded bg-neg-tint text-neg text-[9.5px] font-semibold">
+                  <span className="inline-flex items-center gap-0.5 h-4 px-1 rounded bg-neg-tint text-neg text-[10.5px] font-semibold">
                     <Flame className="size-2.5" strokeWidth={2} /> HOT
                   </span>
                 )}
                 {isStuck && (
-                  <span className="h-4 px-1 rounded bg-warn-tint text-warn text-[9.5px] font-semibold inline-flex items-center">
+                  <span className="h-4 px-1 rounded bg-warn-tint text-warn text-[10.5px] font-semibold inline-flex items-center">
                     STUCK
                   </span>
                 )}
               </div>
-              <div className="text-[12px] text-muted-foreground">{stageLabel(r.stage)}</div>
+              <div className="text-[13px] text-muted-foreground">{stageLabel(r.stage)}</div>
               <div className="tabular text-muted-foreground">{r.messageCount}</div>
               <div className="text-muted-foreground">{relTime(r.lastActivityAt)} ago</div>
               <div>

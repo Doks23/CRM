@@ -22,7 +22,7 @@ import { getBusinessProfile } from "@/lib/business-profile";
 
 export interface WorklistTile {
   key:
-    | "needs_reply"
+    | "new"
     | "drafts_pending"
     | "samples_followup"
     | "reorder_due"
@@ -89,7 +89,7 @@ export async function loadWorklist(): Promise<WorklistTile[]> {
     .from(leads)
     .where(
       and(
-        eq(leads.stage, "won"),
+        sql`${leads.stage} in ('won', 'dispatched')`,
         sql`${leads.lastActivityAt} < ${cutoff}`,
       ),
     );
@@ -105,17 +105,17 @@ export async function loadWorklist(): Promise<WorklistTile[]> {
 
   return [
     {
-      key: "needs_reply",
-      label: "Needs reply",
+      key: "new",
+      label: "New mail",
       count: needsReply,
-      href: "/inbox?filter=needs_reply",
+      href: "/inbox?filter=new",
       tone: needsReply > 0 ? "info" : "default",
     },
     {
       key: "drafts_pending",
       label: "Drafts to review",
       count: draftsPending,
-      href: "/inbox?filter=drafts_ready",
+      href: "/inbox?filter=draft",
       tone: draftsPending > 0 ? "info" : "default",
     },
     {

@@ -93,7 +93,7 @@ export function Sidebar({
           .filter((g) => g.label !== "ADMIN" || userRole === "owner")
           .map((g) => (
           <div key={g.label}>
-            <div className="px-2 pb-1.5 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
+            <div className="px-2 pb-1.5 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
               {g.label}
             </div>
             <div className="space-y-0.5">
@@ -108,7 +108,7 @@ export function Sidebar({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-all",
+                      "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-all",
                       active
                         ? "bg-sidebar-accent text-foreground font-medium shadow-[0_1px_0_rgba(20,14,8,.04),_0_1px_3px_rgba(20,14,8,.05)]"
                         : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
@@ -128,7 +128,7 @@ export function Sidebar({
                     {badge != null && (
                       <span
                         className={cn(
-                          "rounded-full px-1.5 py-px text-[10.5px] font-semibold tabular-nums",
+                          "rounded-full px-1.5 py-px text-[11.5px] font-semibold tabular-nums",
                           active
                             ? "bg-primary text-primary-foreground"
                             : "bg-foreground/[0.06] text-foreground/70"
@@ -150,10 +150,10 @@ export function Sidebar({
           {userInitial}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[12.5px] font-medium leading-tight truncate">
+          <div className="text-[13.5px] font-medium leading-tight truncate">
             {userName}
           </div>
-          <div className="text-[10.5px] text-muted-foreground truncate">
+          <div className="text-[11.5px] text-muted-foreground truncate">
             {userRole} · {userEmail}
           </div>
         </div>

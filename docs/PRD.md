@@ -1,9 +1,9 @@
-# White Pops CRM — Product Requirements Document (MVP)
+# White Pops CRM — Product Requirements Document
 
 **Brand:** White Pops (Makhana / fox nut processing)
 **Owner:** Saurabh D
-**Last updated:** 2026-05-14
-**Status:** Draft v1 — Milestone 0 in implementation
+**Last updated:** 2026-05-16
+**Status:** Implementation complete (M0–M6)
 
 ---
 
@@ -11,20 +11,13 @@
 
 Saurabh runs **White Pops**, a Makhana (fox nut) processing unit. Leads arrive primarily through Gmail — LinkedIn lead-gen notifications, direct customer emails, and inquiry-form forwards. Volume is high (especially inquiries), and a meaningful share are cold/spam. Today, triage, response drafting, and follow-up tracking happen manually and inconsistently.
 
-**Goal:** Build a self-hosted CRM that ingests Gmail, uses AI to triage and draft replies, and tracks the lead all the way from first email to repeat order. The MVP is deliberately narrow: prove the AI loop works on the real inbox before expanding into orders, samples, and quotations.
+**Goal:** Build a self-hosted CRM that ingests Gmail, uses AI to triage and draft replies, and tracks the lead all the way from first email to repeat order.
 
-**Non-goals for MVP**
+**Non-goals (v1)**
 - Sending replies automatically (human-in-the-loop only)
-- Order/inventory/dispatch modules
-- Sample-shipment tracking
 - WhatsApp / phone integration
 - Quotation PDF generation
-
-These move to v2+.
-
-**In scope (added after first review)**
-- Reporting dashboard (see §9.5)
-- AI-drafted replies saved as Gmail Drafts so they're reviewable in Gmail too, not only in the CRM
+- Customer CSV import
 
 ---
 
@@ -34,35 +27,39 @@ Three roles, RBAC enforced at API and UI layer:
 
 | Role | Sees | Can do |
 |---|---|---|
-| **Owner** | Everything | Connect Gmail, manage users, edit catalog, view/edit any lead, reassign, override AI |
+| **Owner** | Everything | Connect Gmail, manage users/employees, edit catalog, view/edit any lead, reassign, override AI, access all settings |
 | **Sales rep** | Leads assigned to them + unassigned queue | Review/edit AI drafts, send replies, change stage, add notes, claim unassigned leads |
-| **Production / Dispatch** | Only leads at stage `PO Received` or later | Mark dispatch status, add internal notes (MVP keeps this thin — full module in v2) |
+| **Production / Dispatch** | Only leads at `po` or `dispatched` | Update inventory, mark shipments, limited pipeline view |
 
-Auth: Google OAuth via Auth.js. Only emails on an allowlist (managed by Owner) can sign in.
+Auth: Google OAuth + email/password via Auth.js. Only emails on an allowlist (managed by Owner) can sign in via Google. Credentials sign-in bypasses allowlist for owner-created employees.
 
 ---
 
-## 3. User Stories (MVP)
+## 3. User Stories (Implemented)
 
 ### As an Owner
 1. Connect my business Gmail account once, with consent for read + send + modify scopes.
-2. Add team members by email; assign roles.
-3. Open the CRM and see a triaged inbox — relevant leads at top, cold/spam hidden by default.
-4. See an AI-drafted reply next to each lead, edit it, send it from the CRM (it lands in Gmail's Sent folder).
-5. Define products: SKU, grade, MOQ, price tiers, current stock note. The AI uses this to draft accurate replies.
+2. Add team members by email + name + role (auto-generated password shown once).
+3. Open the CRM and see a triaged inbox — relevant leads in New Mail, draft-ready threads in Draft.
+4. See an AI-drafted reply next to each email, edit it with optional instructions, approve and send (lands in Gmail's Sent folder).
+5. Define products: SKU, grade, MOQ, price tiers. The AI uses this to draft accurate replies.
 6. Assign a lead to a sales rep with one click.
-7. See a pipeline board: which leads at which stage, who owns each, days since last activity.
+7. See a pipeline board: leads by stage, who owns each, drag to move.
+8. View reports: email volume, funnel conversion, draft quality, AI costs, activity leaderboard.
+9. Manage inventory: view stock levels, record movements.
+10. Track customer records: add/edit customers, link leads to customers.
 
 ### As a Sales rep
-1. Log in via Google; land on my assigned leads.
+1. Log in via email/password or Google; land on dashboard.
 2. Read the full email thread inline; see the AI's classification and reasoning.
-3. Approve, edit, or rewrite the draft; send.
+3. Review, edit with custom instructions, or rewrite the draft; send.
 4. Move the lead through stages manually as conversations evolve.
-5. Get a follow-up nudge if a lead I sent has gone silent past a configurable window (default 4 days).
+5. See follow-up nudges on the dashboard.
 
-### As Production/Dispatch (lightweight in MVP)
-1. See only leads marked `PO Received` or `Dispatched`.
-2. Add an internal note when goods leave the facility.
+### As Production/Dispatch
+1. See leads at `po` or `dispatched` stage.
+2. Update inventory and record stock movements.
+3. Track sample dispatches with courier/AWB numbers.
 
 ---
 
@@ -75,366 +72,350 @@ Auth: Google OAuth via Auth.js. Only emails on an allowlist (managed by Owner) c
                             │ Gmail API (OAuth refresh token)
                             │
    ┌────────────────────────┼─────────────────────────────┐
-   │   Vercel (Next.js 15, App Router)                    │
-   │   - UI (React / shadcn-ui / Tailwind)                │
-   │   - API routes (Server Actions + Route Handlers)     │
-   │   - Auth.js (Google OAuth + allowlist)               │
+   │   Vercel / Self-host (Next.js 16, App Router)       │
+   │   - UI (React 19 / shadcn-ui base-nova / Tailwind 4)│
+   │   - API routes (Route Handlers)                     │
+   │   - Auth.js v5 (Google OAuth + Credentials)          │
    └──────┬───────────────────────────┬───────────────────┘
           │                           │
           │ Drizzle ORM               │ trigger
           ▼                           ▼
    ┌──────────────┐          ┌─────────────────────┐
-   │ Neon Postgres│          │   Inngent functions │
+   │ Neon Postgres│          │  Inngest functions  │
    │ (managed)    │          │  (durable workers)  │
-   └──────────────┘          │ - gmail.poll        │
-          ▲                  │ - ai.classify       │
-          │                  │ - ai.draft          │
-          │                  │ - follow_up.tick    │
+   └──────────────┘          │ - gmail-poll        │
+          ▲                  │ - ai-classify       │
+          │                  │ - ai-draft          │
+          │                  │ - follow-up-tick    │
+          │                  │ - sample-followup   │
+          │                  │ - repeat-order-radar│
           └──────────────────┴─────────┬───────────┘
                                        │
                                        ▼
-                        ┌──────────────────────┐
-                        │  Anthropic Claude API│
-                        │  - haiku 4.5 classify│
-                        │  - sonnet 4.6 drafts │
-                        │  - prompt caching ON │
-                        └──────────────────────┘
+                        ┌──────────────────────────┐
+                        │ LLM Providers (pluggable) │
+                        │ - Google Gemini (default) │
+                        │ - OpenAI                  │
+                        │ - Ollama (local)          │
+                        └──────────────────────────┘
 ```
 
-**Why Inngest:** Vercel functions are short-lived; Gmail polling, AI calls, and follow-up timers need durable background execution. Inngest is Vercel-native, has retries/timeouts/step functions, runs cron, and has a generous free tier. Alternative considered: Vercel Cron + QStash; rejected because Inngest's step DAG is cleaner for the multi-stage AI pipeline.
+**Why Inngest:** Vercel functions are short-lived; Gmail polling, AI calls, and follow-up timers need durable background execution.
 
-**Why Neon over Supabase:** Auth.js + Drizzle is simpler against a vanilla Postgres. Supabase is great if we'd lean on its auth/RLS/storage, but we're using Auth.js so we don't get that leverage. Neon's branching is also helpful for dev.
+**Why Neon over Supabase:** Auth.js + Drizzle is simpler against vanilla Postgres. Neon's branching is helpful for dev.
 
 ---
 
-## 5. Data Model
+## 5. Data Model — Current Schema (16 tables)
 
-Drizzle schema, Postgres. Tables (MVP):
+Drizzle ORM on PostgreSQL. Full schema in `src/db/schema.ts`.
 
-### `users`
-| col | type | notes |
+### Core business tables
+
+| Table | Purpose | Key columns |
 |---|---|---|
-| id | uuid pk | |
-| email | text unique | matched to Google identity |
-| name | text | |
-| role | enum('owner','sales','production') | |
-| active | bool | toggles login |
-| created_at | timestamptz | |
+| `users` | Auth.js users + role/active | email (unique), role (owner/sales/production), hash (for credentials) |
+| `accounts` | Auth.js OAuth account links | provider, providerAccountId, userId FK |
+| `sessions` | Auth.js sessions | sessionToken, userId FK, expires |
+| `verificationTokens` | Auth.js email verification | identifier, token, expires |
 
-### `gmail_account`
-Single row in MVP (shared inbox). Stores OAuth refresh token (encrypted with `ENCRYPTION_KEY` env), last history ID for incremental sync, last poll time.
+### Gmail integration
 
-### `leads`
-| col | type | notes |
+| Table | Purpose | Key columns |
 |---|---|---|
-| id | uuid pk | |
-| primary_email | citext | dedup key |
-| contact_name | text | extracted by AI, editable |
-| company | text | |
-| phone | text | |
-| source | enum('linkedin','gmail_direct','inquiry_form','referral','unknown') | |
-| lead_type | enum('bulk','retail','inquiry','partnership','export','sample_request','spam') | |
-| stage | enum — see §6 | |
-| score | int 0-100 | AI-assigned, editable |
-| assigned_user_id | uuid fk users.id null | unassigned = queue |
-| owner_user_id | uuid fk users.id null | original capturer |
-| ai_summary | text | one-paragraph AI summary, updated on each new message |
-| ai_extracted | jsonb | {quantity, product_interest, budget, region, urgency, …} |
-| first_contact_at | timestamptz | |
-| last_activity_at | timestamptz | indexed |
-| created_at | timestamptz | |
+| `gmailAccount` | Singleton shared inbox connection | email (unique), encryptedRefreshToken, lastHistoryId, lastPolledAt, lastErrorKind |
 
-### `email_threads`
-| col | type |
-|---|---|
-| id | uuid pk |
-| lead_id | uuid fk |
-| gmail_thread_id | text unique |
-| subject | text |
-| last_message_at | timestamptz |
+### CRM core
 
-### `email_messages`
-| col | type |
-|---|---|
-| id | uuid pk |
-| thread_id | uuid fk |
-| gmail_message_id | text unique |
-| direction | enum('inbound','outbound') |
-| from_email | text |
-| to_emails | text[] |
-| received_at | timestamptz |
-| body_text | text |
-| body_html | text |
-| ai_category | enum('relevant','cold','spam','internal','newsletter') |
-| ai_confidence | numeric(3,2) |
-| ai_reason | text |
-| processed_at | timestamptz null |
-
-### `ai_drafts`
-| col | type | notes |
+| Table | Purpose | Key columns |
 |---|---|---|
-| id | uuid pk | |
-| lead_id | uuid fk | |
-| in_reply_to_message_id | uuid fk email_messages.id | |
-| draft_body | text | initial AI output |
-| edited_body | text null | latest version after edits (CRM or Gmail) |
-| language | enum('en','hi','hinglish') | detected from inbound |
-| status | enum('pending','approved','edited','sent','discarded') | |
-| gmail_draft_id | text null | id from gmail.users.drafts.create |
-| sent_message_id | text null | Gmail message ID after send |
-| last_synced_at | timestamptz null | last sync between DB draft and Gmail draft |
-| created_at | timestamptz | |
-| sent_at | timestamptz null | |
-| sent_by | uuid fk users.id null | |
+| `leads` | Lead/contact records | leadCode (unique, LEAD-XXXX), primaryEmail, stage (enum), source (enum), leadType (enum), score, assignedUserId FK, customerId FK |
+| `emailMessages` | Individual email messages | gmailMessageId (unique), gmailThreadId, direction (inbound/outbound), aiCategory, aiConfidence |
+| `aiDrafts` | AI-generated draft replies | draftBody, editedBody, status (pending/approved/edited/sent/discarded), gmailDraftId |
+| `customers` | Customer records | customerCode (unique, CUST-XXXX), name, email, phone, company, gstin, address |
+| `products` | Product catalog | sku (unique), name, grade, packSize, moq, priceRetail, priceWholesale |
 
-### `activities`
-Audit log: `id, lead_id, user_id, type, payload jsonb, at`. Types: `note_added`, `stage_changed`, `assigned`, `email_sent`, `draft_edited`, `ai_classified`.
+### Inventory & Logistics
 
-### `follow_ups`
-| col | type |
-|---|---|
-| id | uuid pk |
-| lead_id | uuid fk |
-| due_at | timestamptz |
-| reason | text |
-| status | enum('pending','done','dismissed') |
-| created_by | enum('system','user') |
+| Table | Purpose | Key columns |
+|---|---|---|
+| `inventory` | Stock per product (1:1) | productId (unique FK), quantity |
+| `stockMovements` | Inventory movement log | inventoryId FK, quantity, type (in/out/adjustment), note |
+| `sampleDispatches` | Sample shipment tracking | leadId FK, productId FK, courier, awb, status (enum), followUpDueAt |
 
-### `products`
-| col | type |
-|---|---|
-| id | uuid pk |
-| sku | text unique |
-| name | text | e.g. "Premium Makhana 4-Suta" |
-| grade | text | 4-suta / 5-suta / 6+ |
-| pack_size | text | 250g / 1kg / 10kg |
-| moq | int |
-| price_retail | numeric |
-| price_wholesale | numeric |
-| price_export_usd | numeric null |
-| stock_note | text | freeform: "in stock", "2-week lead time" |
-| active | bool |
+### AI & Telemetry
+
+| Table | Purpose | Key columns |
+|---|---|---|
+| `businessProfile` | Singleton business config | companyName, inboxKeywords, classifierProvider, drafterProvider, dailyAiCostCapInr, allowedEmails |
+| `draftEditPairs` | AI-vs-human edit tracking | originalBody, finalBody, editRatio, language |
+| `aiCalls` | LLM telemetry & cost tracking | task (classify/draft), provider, model, inputTokens, outputTokens, costInr, status, latencyMs |
+
+### Stage enum
+`new` → `info_sent` → `negotiation` → `po` → `dispatched`
+Hidden: `ignored` (shows as tag, not on pipeline board)
+
+### Source enum
+`linkedin`, `gmail_direct`, `inquiry_form`, `referral`, `unknown`
+
+### Lead type enum
+`bulk`, `retail`, `inquiry`, `partnership`, `export`, `sample_request`, `spam`
+
+### AI category enum
+`relevant`, `cold`, `spam`, `internal`, `newsletter`
+
+### Draft status enum
+`pending`, `approved`, `edited`, `sent`, `discarded`
 
 ---
 
 ## 6. Pipeline Stages
 
-Default stages (Owner can rename in settings later, MVP is fixed):
+| Stage | Description | Shown on Kanban |
+|---|---|---|
+| **New** | Captured, not yet reviewed | Yes |
+| **Info Sent** | First reply sent (catalog, pricing) | Yes |
+| **Negotiation** | Back-and-forth on terms | Yes |
+| **PO** | Confirmed order | Yes |
+| **Dispatched** | Production handed off | Yes |
+| **Ignored** | Not a fit (hidden from board) | No |
 
-1. **New** — captured, not yet reviewed
-2. **Qualified** — AI or rep marked relevant, intent confirmed
-3. **Info Sent** — first reply sent (catalog, pricing, samples)
-4. **Negotiation** — back-and-forth on terms
-5. **PO Received** — confirmed order
-6. **Dispatched** — production handed off
-7. **Won** — delivered and paid
-8. **Lost** — closed, reason captured
-9. **Nurture** — long-term, periodic check-in
-
-Stage moves are manual in MVP. Automatic moves (e.g., on send → Info Sent) come in v2.
+Stage moves are manual. Past stages (won, lost, qualified, nurture, needs_review, po_received) have been migrated to current values.
 
 ---
 
-## 7. The AI Layer (Core of MVP)
+## 7. The AI Layer
 
-### 7.1 Models
-Pluggable. The active provider + model for each task is stored in `business_profile` and editable in Settings. Initial provider set:
+### 7.1 Models & Providers
+Pluggable architecture. Active provider + model stored in `businessProfile`, configurable in Settings:
 
-- **Google Gemini** (recommended default; Hindi/Hinglish strong, cheap)
-- **OpenAI GPT**
-- **Ollama** (local self-hosted, zero per-call cost)
+- **Google Gemini** (default classify + draft) — `gemini-2.5-flash`, `gemini-2.5-pro`
+- **OpenAI** — `gpt-4o-mini`, `gpt-4o`, `gpt-4.1-mini`
+- **Ollama** (local) — `llama3.1`, `qwen2.5`
 
-Defaults seeded:
-- **Classifier:** Gemini `gemini-2.5-flash` — cheap, fast, JSON output
-- **Drafter:** OpenAI `gpt-4o` — strong tone control and instruction following
+Defaults: classifier = Gemini `gemini-2.5-flash`, drafter = Gemini `gemini-2.5-flash`.
 
-Owner can swap either at any time without code changes. Provider-side caching used when available (Gemini context caching, OpenAI prompt caching) for the business profile + product catalog block.
-
-### 7.2 Classification taxonomy
-The classifier returns:
-```json
-{
-  "category": "relevant" | "cold" | "spam" | "internal" | "newsletter",
-  "lead_type": "bulk" | "retail" | "inquiry" | "partnership" | "export" | "sample_request" | "n/a",
-  "intent": "free-text 1-line summary",
-  "confidence": 0.0-1.0,
-  "extracted": {
-    "contact_name": string | null,
-    "company": string | null,
-    "phone": string | null,
-    "quantity": string | null,
-    "product_interest": string | null,
-    "region": string | null,
-    "budget": string | null,
-    "urgency": "low" | "medium" | "high" | null
-  },
-  "reason": "1-2 sentence explanation"
-}
-```
+### 7.2 Classification
+On-demand (user clicks "Run AI Analysis"). Returns:
+- Category: relevant / cold / spam / internal / newsletter
+- Lead type: bulk / retail / inquiry / partnership / export / sample_request / n/a
+- Intent, confidence (0–1), extracted fields (name, company, phone, etc.)
+- Reason for classification
 
 Rules:
-- `confidence < 0.6` → goes to a **Needs Review** bucket; no draft generated
-- `category in ('cold','spam','newsletter')` → archived from main inbox view, no draft, but still stored
-- `category = 'relevant'` → upsert lead, queue draft
+- `confidence < 0.6` → Needs Review (no draft auto-generated)
+- `category in ('cold','spam','newsletter')` → excluded from main inbox
+- `category = 'relevant'` → stored, draft can be generated
 
-### 7.3 Draft generation
-Inputs to the drafter:
-- System prompt: business profile (Saurabh's company, FSSAI/APEDA status, capabilities), tone **warm-professional, Indian B2B**, INR pricing only
-- **Language rule:** reply in the same language and script as the inbound message. English in → English out. Hindi (Devanagari) in → Hindi out. Hinglish in → Hinglish out. Classifier and drafter both detect language; never auto-translate without preserving the original
-- Cached: product catalog (active SKUs only)
-- Per-call: full thread history (last 10 messages), classification output, current lead record
+### 7.3 Web Enrichment
+At classify time, fetches sender's website homepage via HTTP (`src/lib/enrich.ts`). Extracts company name, OG tags, description. Skips personal email domains (gmail, yahoo, etc.). Zero-cost, no extra API keys.
 
-Output: plain-text reply body. Subject line is reused with `Re:`.
+### 7.4 Draft Generation
+Inputs: business profile, product catalog, thread history (last messages), classification output, lead record.
 
-Draft is **never auto-sent** in MVP. Two-surface review:
-1. Stored in our DB as `ai_drafts` (status `pending`)
-2. **Also created as a real Gmail Draft** on the original thread via `gmail.users.drafts.create`. Saurabh can open Gmail on mobile/desktop and see the same draft there. The Gmail draft ID is stored in `ai_drafts.gmail_draft_id`.
+Language rule: reply in the same language and script as the inbound message (English / Hindi / Hinglish).
 
-On Approve & Send from the CRM: we call `gmail.users.drafts.send` (sends the existing draft, no duplicate), then update `ai_drafts.status = sent`. If Saurabh sends the draft directly from Gmail, the next poll cycle detects the outbound message on the thread, marks the draft `sent` retroactively, and reconciles.
+Draft is **never auto-sent**. Two-surface review:
+1. Stored in DB as `ai_drafts` (status `pending`)
+2. Created as a real Gmail Draft on the original thread
 
-If the draft is edited in either surface before send, we treat the most-recently-modified version as canonical and overwrite the other on next sync.
+On Approve & Send: calls `gmail.users.drafts.send`. Gmail Draft ID is stored in `ai_drafts.gmail_draft_id`.
 
-### 7.4 Follow-up logic
-A cron Inngent function runs daily:
-- For each lead in stages `Info Sent` or `Negotiation` where last outbound message > N days ago and no inbound reply → create `follow_ups` row + AI-drafted nudge in `ai_drafts`.
-- N defaults: Info Sent → 4 days, Negotiation → 3 days. Configurable.
+Optional user instructions for draft re-generation (e.g., "make it shorter", "emphasise quality") — calls the drafter again with the instruction appended.
+
+### 7.5 Cost Controls
+- Daily AI cost cap (configurable in Settings, default ₹100/day)
+- All LLM calls tracked in `aiCalls` table with token counts and cost
+- Cap check before every AI call; returns informative error if exceeded
+- Reports dashboard shows spend, trends, and cap utilization
+
+### 7.6 Tone Learning (Module Complete, Not Yet Wired)
+`src/lib/ai/tone-learning.ts` loads recent edit pairs (AI draft → human-edited version) to use as few-shot examples. Selection heuristic: edit ratio between 4–85%, minimum 30 chars, language-balanced. Ready to wire into the draft prompt.
 
 ---
 
-## 8. API Surface (high-level)
+## 8. API Surface
 
-Server Actions for mutations from the UI; Route Handlers for webhooks and Inngest.
+### Auth
+- `POST /api/auth/[...nextauth]` — Auth.js (Google OAuth + Credentials)
 
-- `POST /api/auth/[...nextauth]` — Auth.js
+### Gmail
 - `GET /api/gmail/connect` — OAuth start (Owner only)
 - `GET /api/gmail/callback` — OAuth finish, stores refresh token
-- `POST /api/inngest` — Inngest function endpoint
-- Server actions:
-  - `assignLead(leadId, userId)`
-  - `changeStage(leadId, stage)`
-  - `approveDraft(draftId, finalBody)` → calls Gmail send
-  - `discardDraft(draftId)`
-  - `addNote(leadId, text)`
-  - `upsertProduct(productPayload)`
-  - `inviteUser(email, role)`
+- `POST /api/gmail/sync` — Trigger manual sync
 
-Inngest functions:
-- `gmail.poll` — cron every 2 min: fetch new messages by historyId, write to `email_messages`, enqueue classify
-- `ai.classify` — runs Haiku, writes back to `email_messages`, upserts lead if relevant, enqueues draft
-- `ai.draft` — runs Sonnet, writes `ai_drafts` pending
-- `follow_up.tick` — cron daily 09:00 IST
+### Inbox
+- `GET /api/inbox/threads` — List threads (filter, search)
+- `POST /api/inbox/classify` — Run AI classification on a message
+- `POST /api/inbox/draft` — Generate AI draft for a thread
+- `POST /api/inbox/regenerate` — Re-generate draft with user instructions
+- `POST /api/inbox/send` — Approve & send draft
+
+### Leads
+- `GET /api/leads` — List leads
+- `POST /api/leads` — Create lead (auto-generates LEAD-XXXX code)
+- `PATCH /api/leads/[id]` — Update lead (stage, assignment, notes)
+- `PATCH /api/leads/[id]/customer` — Link/unlink customer
+
+### Customers
+- `GET /api/customers` — List customers
+- `PATCH /api/customers/[id]` — Update customer
+
+### Products
+- `GET /api/products` — List products
+- `POST /api/products` — Create product
+- `PATCH /api/products/[id]` — Update product
+
+### Inventory
+- `GET /api/inventory/movements` — List movements with filters
+- `POST /api/inventory/movements` — Record stock movement
+
+### Reports
+- `GET /api/reports` — Aggregated dashboard data
+
+### Users
+- `POST /api/users` — Create employee (Owner only)
+- `DELETE /api/users` — Remove employee
+- `PATCH /api/users/password` — Change own password
+
+### Inngest
+- `GET /api/inngest` — Inngest SDK handler
 
 ---
 
 ## 9. UI / Screens
 
-### 9.1 Inbox (default landing)
-Two-pane. Left: list of leads sorted by `last_activity_at`, filterable by stage, lead_type, assigned-to, AI category. Color chip per type. Right: selected lead's thread + AI draft panel.
+### 9.1 Dashboard (`/dashboard`)
+- Time-based greeting with user name
+- 5 KPI cards: New Mail, Drafts to Review, Samples Follow-up, Reorder Check-ins, AI Spend Today (sparklines + deltas)
+- Today's Focus: pending AI drafts with previews
+- Inbox Pulse: 14-day bar chart (relevant/other/cold), reply rate stats
+- Pipeline Pulse: horizontal stacked bar with stage counts
+- Saathi Activity: recent AI call log with timestamps and costs
 
-### 9.2 Lead detail
-- Header: contact, company, stage selector, assigned-to, score
-- Tabs: Thread • AI Summary • Activity • Notes
-- Right panel: AI draft (editable textarea, Approve & Send / Edit / Discard buttons)
+### 9.2 Inbox (`/inbox`)
+Three-panel layout:
+1. **Folders Rail** — Triage: New Mail / Draft / All Threads / Awaiting (each with count). By Stage: links with color dots.
+2. **Thread List** — Contact avatar, name, lead code, age, company, subject, snippet, stage pill, Draft ready badge. Filter tabs: New / Draft / All. Search via `?q=` preserved across tabs.
+3. **Thread View** — Email thread with inbound/outbound styling. StageSelect + CustomerSelect in header. Classification button or Draft panel with edit/send controls. Avatar, direction arrows, timestamps.
 
-### 9.3 Pipeline board
-Kanban columns = stages. Cards = leads with name, company, days-since-last-activity, owner avatar. Drag to move stage.
+Full thread view (`/inbox/[gmailThreadId]`): right rail with LeadMemoryPanel, StageSelect/CustomerSelect, SampleTracker, DetailsCard.
 
-### 9.4 Settings
-- Gmail connection status + reconnect (initial account: `doks23@gmail.com`, swappable later)
-- Team users (invite by email, set role, deactivate)
-- Products (CRUD table)
-- Business profile (used in AI prompts: company name, GSTIN, FSSAI #, certifications, default Incoterms)
-- Follow-up windows
+### 9.3 Pipeline (`/pipeline`)
+Kanban board with 5 columns: New → Info Sent → Negotiation → PO → Dispatched. Drag-and-drop to move stages. Lead cards show name, company, days since activity, assigned user. Lead assignment dialog, create lead button, search/filter.
 
-### 9.5 Reporting dashboard
-One screen, date-range filter (default: last 30 days). Sections:
+### 9.4 Customers (`/customers`)
+Table view with columns: Code, Name, Company, Email, Phone, GSTIN, Address. Inline edit via Sheet (pencil icon per row). Search bar.
 
-**Inbox health**
-- Emails received (line chart by day)
-- Breakdown by AI category: relevant / cold / spam / newsletter (stacked bar)
-- Breakdown by lead_type: bulk / retail / inquiry / partnership / export / sample_request (donut)
-- Language mix: en / hi / hinglish (donut)
+### 9.5 Products (`/products`)
+Card grid with create/edit sheet. Fields: SKU, Name, Grade, Pack Size, MOQ, Retail Price, Wholesale Price, Stock Note, Active toggle.
 
-**Lead funnel**
-- Counts at each pipeline stage (funnel chart)
-- Stage-to-stage conversion rates
-- Average days in each stage
-- Win rate (`Won / (Won + Lost)`)
+### 9.6 Inventory (`/inventory`)
+Per-product stock view. Record movements (add/remove/adjust) with quantity and note. Stock movement log.
 
-**Response performance**
-- Median time from inbound → draft generated (system metric)
-- Median time from draft → sent (human-review latency)
-- % of drafts: approved-as-is / edited / discarded — proxy for AI quality
-- Replies sent per day
+### 9.7 Samples (`/samples`)
+Sample dispatch tracking. Per lead: SKU, courier, AWB, sent/delivered dates, follow-up due date. Status workflow: pending dispatch → in transit → delivered → follow-up sent → closed.
 
-**Per-rep leaderboard**
-- Leads assigned, replies sent, deals moved to Won, deals lost, current open leads
+### 9.8 Reports (`/reports`)
+Dynamic = force-dynamic. Sections:
+- **Big Stats**: Emails handled, Reply rate, Drafts generated, AI spend today (sparklines)
+- **Funnel Card**: 5-stage conversion (New → Info Sent → Negotiation → PO → Dispatched)
+- **Inbox Health**: 14-day stacked bar (inbound vs outbound)
+- **Source Mix**: Donut by lead source
+- **AI Cost**: Today's spend, cap bar, daily trend, call/token details
+- **Draft Quality**: Approved/Edited/Discarded %, avg confidence
+- **Leaderboard**: Top accounts by activity with sparklines, HOT/STUCK badges
 
-**AI cost**
-- Daily Anthropic spend (₹) — pulled from internal token-counter; alert if > daily cap
+### 9.9 Settings
+Sub-pages accessible from sidebar:
+- **Gmail** — Connection status, sync interval, connect/reconnect
+- **Business Profile** — Company info, brand voice, inbox keywords, follow-up windows, festive dates
+- **AI** — Classifier + drafter provider/model selection, cost cap
+- **Greetings** — Greeting templates per festival/occasion
+- **Account** — Name, email, change password
+- **Products** (link)
 
-All charts client-side (Recharts). Server returns pre-aggregated JSON; no raw row dumps to the browser.
+### 9.10 Employees (`/employees`)
+Owner-only: table with name, email, role, status. Create employee (name, email, role → auto-generates password shown once). Delete employee.
 
----
-
-## 10. Security & Compliance
-
-- All secrets via Vercel env vars: `ANTHROPIC_API_KEY`, `GOOGLE_OAUTH_CLIENT_ID/SECRET`, `DATABASE_URL`, `ENCRYPTION_KEY`, `AUTH_SECRET`, `INNGEST_SIGNING_KEY`.
-- Gmail refresh token encrypted at rest with AES-256-GCM using `ENCRYPTION_KEY`.
-- RBAC enforced at server-action layer (not only UI).
-- Audit log via `activities` table.
-- Rate limit AI calls per lead (cap classify retries; cap draft regenerations).
-- Cost guardrail: daily Anthropic spend cap, alert + circuit-break.
+### 9.11 Login (`/login`)
+Dual sign-in: email/password form + "Continue with Google" button.
 
 ---
 
-## 11. Delivery Plan
+## 10. Background Jobs (Inngest)
 
-**Milestone 0 — Foundation (week 1)**
-- Next.js scaffold, Drizzle + Neon, Auth.js Google login + allowlist, base shell UI, deploy to Vercel
-
-**Milestone 1 — Gmail ingest (week 2)**
-- Gmail OAuth, encrypted token storage, Inngest project, `gmail.poll` writes raw messages
-
-**Milestone 2 — AI classify (week 3)**
-- Haiku classifier, lead upsert, thread linkage, Inbox UI showing classified items
-
-**Milestone 3 — AI draft + send (week 4)**
-- Sonnet drafter, draft review UI, Gmail send, lands in Sent
-
-**Milestone 4 — Pipeline + team + catalog + follow-ups (week 5)**
-- Stages, Kanban, assignment, product CRUD, follow-up cron
-
-**Milestone 5 — Reporting dashboard (week 6)**
-- Aggregation queries, Recharts UI, date-range filter, per-rep leaderboard, AI cost panel
-
-**Milestone 6 — Polish + private beta (week 7)**
-- Activity log UI, settings polish, you and team start daily use
-
-After daily use proves the loop: roadmap v2 — quotations, samples, orders, WhatsApp, repeat-order intelligence.
+| Function | Trigger | What it does |
+|---|---|---|
+| `gmail-poll` | Cron `* * * * *` + event `gmail/sync.requested` | Polls Gmail for new messages, persists to DB, skips non-keyword threads |
+| `ai-classify` | Event `ai/classify.requested` | Runs LLM classifier on a message, updates lead record |
+| `ai-draft` | Event `ai/draft.requested` | Generates draft reply, creates Gmail Draft |
+| `follow-up-tick` | Cron daily 8am | Nudges for info_sent/negotiation leads past configured window |
+| `sample-followup` | Cron daily 2:20am + event `samples/followup.requested` | Follow-up reminders for delivered samples past due date |
+| `repeat-order-radar` | Cron daily | Checks won/dispatched leads silent past nudge window |
 
 ---
 
-## 12. Confirmed Answers (2026-05-14)
+## 11. Security
 
-1. **Shared inbox:** `doks23@gmail.com` (swappable later via Settings → Reconnect).
-2. **Domain:** vercel.app subdomain for now; custom domain attached later.
-3. **Volume:** 5–10 emails/day. Tiny. AI budget cap: ₹2,000/month is more than enough; we set a ₹500/month soft cap with alert.
-4. **Languages:** English + Hindi (Devanagari) + Hinglish. Classifier detects, drafter replies in the same language and script.
-5. **Lead identification rule:** universal — classify any incoming email by subject keywords + first lines of body. If not Makhana-related (regardless of source — LinkedIn, direct, inquiry form), category = `cold` or `spam` and it does not enter the active inbox or generate a draft. LinkedIn lead-gen notifications get the same content-based test; the embedded lead message is extracted before classification.
-6. **Existing customer CSV:** to be imported later (v2 feature). MVP starts with an empty `leads` table.
-7. **Tone:** warm-professional.
-8. **Currency:** INR only. No USD in drafts or quotes.
-
-Two additional requirements captured into scope:
-- Drafts must be saved as **real Gmail Drafts** (in addition to our DB) so they can be reviewed in Gmail itself. See §7.3.
-- **Reporting dashboard** is in MVP (Milestone 5). See §9.5.
+- All secrets via environment variables: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID/SECRET`, `ENCRYPTION_KEY`, `GMAIL_OAUTH_CLIENT_ID/SECRET`, `GEMINI_API_KEY`, `OPENAI_API_KEY`
+- Gmail refresh token encrypted at rest with AES-256-GCM using `ENCRYPTION_KEY`
+- RBAC enforced at middleware and route level
+- Daily AI cost cap with circuit-break
+- Input validation via Zod schemas where applicable
 
 ---
 
-## 13. Risks
+## 12. Delivery Plan (Completed)
 
-- **Gmail API quotas** — shared inbox at high volume can brush quota limits. Mitigation: use historyId-based incremental sync, not full list polling.
-- **AI hallucination on price/MOQ** — drafts could quote wrong numbers. Mitigation: catalog passed as structured data, prompt instructs "never invent prices; if SKU not in catalog, say 'let me confirm and revert'".
-- **Compliance** — storing Gmail content in our DB. Mitigation: encryption at rest for tokens, redact PII in logs, document retention policy (default: keep forever; configurable purge in v2).
-- **Single-Gmail bus factor** — if the OAuth grant expires or the account is locked, ingest stops. Mitigation: health-check + Slack/email alert.
+| Milestone | Features | Status |
+|---|---|---|
+| **M0 — Foundation** | Next.js scaffold, Drizzle + Neon, Auth.js (Google + Credentials), shell UI, Vercel deploy | ✅ |
+| **M1 — Gmail Ingest** | Gmail OAuth, encrypted token storage, Inngest project, polling sync, keyword filter, shared schema | ✅ |
+| **M2 — AI Classify** | Plugable LLM layer, Gemini/OpenAI/Ollama providers, on-demand classify, web enrichment, inbox categorization | ✅ |
+| **M3 — AI Draft + Send** | Draft generation, Gmail Draft create/send, edit panel, approve flow, re-generation with instructions | ✅ |
+| **M4 — Pipeline + Team** | Kanban board, stage management, lead assignment, product catalog, follow-up cron, team/employee management | ✅ |
+| **M5 — Reports** | Aggregation queries, KPI cards, funnel, inbox health, source mix, AI cost, draft quality, leaderboard, sparklines | ✅ |
+| **M6 — Polish + Extras** | Inventory, samples, customers, settings pages, loading/error states, error audit, My Account, password change, search across filters | ✅ |
+
+---
+
+## 13. Environment Variables
+
+```
+DATABASE_URL                  # Neon Postgres pooled connection string
+AUTH_SECRET                   # openssl rand -base64 32
+AUTH_GOOGLE_ID                # Google OAuth client ID
+AUTH_GOOGLE_SECRET            # Google OAuth client secret
+ENCRYPTION_KEY                # openssl rand -hex 32 (64 hex chars)
+SEED_OWNER_EMAIL              # First owner email for db:seed
+GMAIL_OAUTH_CLIENT_ID         # Separate OAuth client for Gmail API
+GMAIL_OAUTH_CLIENT_SECRET     # Gmail OAuth client secret
+NEXT_PUBLIC_APP_URL           # http://localhost:3000 (dev)
+GEMINI_API_KEY                # Google AI Studio API key
+OPENAI_API_KEY                # OpenAI API key
+```
+
+---
+
+## 14. Known Gaps & Future Work
+
+### v2 candidates
+- Quotation PDF generation
+- Lead scoring engine with ML
+- Email templates library
+- Auto-assignment rules by stage/type
+- WhatsApp integration
+- Mobile app (REST API layer already designed)
+- Customer CSV import
+- Activity log UI
+- Notifications (email/Slack alerts for errors, high-value leads)
+- Multiple Gmail inbox support
+- Production order management
+- Payment tracking
+
+### Current limitations
+- Single Gmail inbox only
+- No automatic stage advancement on send
+- Tone-learning module built but not wired into draft prompts
+- No test files

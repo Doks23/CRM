@@ -96,7 +96,7 @@ export function WhatsAppButton({
           <X className="h-3.5 w-3.5" />
         </Button>
         {error ? (
-          <span className="text-[10px] text-destructive">{error}</span>
+          <span className="text-[11px] text-destructive">{error}</span>
         ) : null}
       </div>
     );
@@ -136,7 +136,7 @@ export function WhatsAppButton({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+        className="text-[12px] text-muted-foreground hover:text-foreground flex items-center gap-1"
         title={phone ?? ""}
       >
         <Pencil className="h-3 w-3" />

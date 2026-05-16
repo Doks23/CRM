@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import { parseGmailMessage, type ParsedMessage } from "./parse";
 import { getGmailConnection, type GmailConnection } from "./client";
+import { nextLeadCode } from "@/lib/next-code";
 
 const INITIAL_BACKFILL_COUNT = 50;
 const BACKFILL_QUERY = "in:inbox newer_than:30d";
@@ -289,6 +290,12 @@ async function persistMessage(msg: ParsedMessage): Promise<boolean> {
   return doPersist(msg);
 }
 
+/** Detect LinkedIn notification-style sender domains. */
+function isLinkedInNotification(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase();
+  return domain === "linkedin.com" || domain === "e.linkedin.com";
+}
+
 async function doPersist(msg: ParsedMessage): Promise<boolean> {
   const otherPartyEmail = msg.isOutbound
     ? msg.toEmails[0] ?? null
@@ -297,20 +304,25 @@ async function doPersist(msg: ParsedMessage): Promise<boolean> {
   if (!otherPartyEmail) return false;
 
   await db.transaction(async (tx) => {
-    let lead = await tx.query.leads.findFirst({
-      where: eq(leads.primaryEmail, otherPartyEmail.toLowerCase()),
-    });
+    let leadId: string | null = null;
 
-    let leadId: string;
-    if (lead) {
-      leadId = lead.id;
-    } else {
+    const existingMsg = await tx.query.emailMessages.findFirst({
+      where: eq(emailMessages.gmailThreadId, msg.gmailThreadId),
+      columns: { leadId: true },
+    });
+    if (existingMsg) {
+      leadId = existingMsg.leadId;
+    }
+
+    if (!leadId) {
+      const code = await nextLeadCode();
       const [newLead] = await tx
         .insert(leads)
         .values({
+          leadCode: code,
           primaryEmail: otherPartyEmail.toLowerCase(),
           contactName: msg.isOutbound ? null : msg.fromName,
-          source: "gmail_direct",
+          source: isLinkedInNotification(otherPartyEmail) ? "linkedin" : "gmail_direct",
           stage: "new",
           firstContactAt: msg.receivedAt,
           lastActivityAt: msg.receivedAt,

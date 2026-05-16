@@ -17,6 +17,7 @@ interface UserData {
 
 interface LeadCardData {
   id: string;
+  leadCode: string;
   contactName: string | null;
   primaryEmail: string;
   company: string | null;
@@ -54,7 +55,7 @@ export function LeadCard({
         const res = await fetch(`/api/leads/${lead.id}/stage`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: "nurture" }),
+          body: JSON.stringify({ stage: "ignored" }),
         });
         if (!res.ok) {
           const d = await res.json();
@@ -87,15 +88,16 @@ export function LeadCard({
         className="block p-3 pb-1"
         onClick={(e) => { if (!lead.latestThreadId) e.preventDefault(); }}
       >
-        <div className="font-medium truncate">
+        <div className="font-medium truncate flex items-center gap-2">
           {lead.contactName || lead.primaryEmail}
+          <span className="text-[10px] font-mono text-muted-foreground">{lead.leadCode}</span>
         </div>
         {lead.company ? (
           <div className="text-xs text-muted-foreground truncate mt-0.5">
             {lead.company}
           </div>
         ) : null}
-        <div className="flex items-center gap-2 mt-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-2 mt-2 text-[12px] text-muted-foreground">
           <span className="capitalize">{lead.leadType.replace(/_/g, " ")}</span>
           {lead.messageCount > 0 ? (
             <>
@@ -124,14 +126,14 @@ export function LeadCard({
           </button>
         </div>
         {assignee ? (
-          <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">
+          <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">
             {assignee.name || assignee.email}
           </span>
         ) : null}
         <AssignDialog leadId={lead.id} currentUserId={lead.assignedUserId} sessionUserId={sessionUserId} users={users} />
       </div>
       {error && (
-        <div className="px-3 pb-2 flex items-center gap-1 text-[10px] text-destructive">
+        <div className="px-3 pb-2 flex items-center gap-1 text-[11px] text-destructive">
           <AlertTriangle className="size-3 shrink-0" />
           <span className="line-clamp-1">{error}</span>
         </div>

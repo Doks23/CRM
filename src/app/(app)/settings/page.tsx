@@ -89,7 +89,7 @@ export default async function SettingsPage() {
         <h2 className="serif text-[26px] leading-tight -tracking-[0.015em]">
           Overview
         </h2>
-        <p className="text-[13px] text-muted-foreground mt-1">
+        <p className="text-[14px] text-muted-foreground mt-1">
           Tune Saathi to your business. Click any section to edit.
         </p>
       </div>
@@ -132,7 +132,7 @@ export default async function SettingsPage() {
       </div>
 
       {!isOwner && (
-        <p className="text-[12px] text-muted-foreground px-1">
+        <p className="text-[13px] text-muted-foreground px-1">
           Gmail and AI settings are visible to Owners only.
         </p>
       )}
@@ -151,11 +151,11 @@ function QuickStat({
 }) {
   return (
     <div className="rounded-xl border border-border bg-card px-4 py-3">
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.10em] text-muted-foreground mb-1">
+      <div className="text-[11.5px] font-semibold uppercase tracking-[0.10em] text-muted-foreground mb-1">
         {label}
       </div>
       <div
-        className={`text-[14px] font-semibold ${
+        className={`text-[15px] font-semibold ${
           tone === "pos"
             ? "text-pos"
             : tone === "warn"
@@ -193,15 +193,15 @@ function SectionCard({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[14px] font-semibold">{title}</span>
+              <span className="text-[15px] font-semibold">{title}</span>
               <Badge
                 variant="outline"
-                className="text-[11px] font-normal rounded"
+                className="text-[12px] font-normal rounded"
               >
                 {badge}
               </Badge>
             </div>
-            <p className="text-[12.5px] text-muted-foreground mt-0.5 leading-[1.4]">
+            <p className="text-[13.5px] text-muted-foreground mt-0.5 leading-[1.4]">
               {desc}
             </p>
           </div>

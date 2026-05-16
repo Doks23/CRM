@@ -9,6 +9,7 @@ import {
   aiDrafts,
   products,
   sampleDispatches,
+  customers,
 } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,8 @@ import { DraftPanel } from "@/components/inbox/draft-panel";
 import { ClassifyButton } from "@/components/inbox/classify-button";
 import { LeadMemoryPanel } from "@/components/inbox/lead-memory-panel";
 import { SampleTracker } from "@/components/inbox/sample-tracker";
-import { LeadHighlightPanel } from "@/components/inbox/lead-highlight-panel";
+import { StageSelect } from "@/components/inbox/stage-select";
+import { CustomerLinkButton } from "@/components/inbox/customer-link-button";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +39,7 @@ export default async function ThreadPage({
     where: eq(leads.id, messages[0].leadId),
   });
 
-  const [profile, , samples] = await Promise.all([
+  const [profile, , samples, linkedCustomer] = await Promise.all([
     db.query.businessProfile.findFirst(),
     db.query.products.findMany({ where: eq(products.active, true) }),
     lead
@@ -47,6 +49,9 @@ export default async function ThreadPage({
           limit: 20,
         })
       : Promise.resolve([]),
+    lead?.customerId
+      ? db.query.customers.findFirst({ where: eq(customers.id, lead.customerId) })
+      : Promise.resolve(null),
   ]);
 
   const latestInbound = [...messages]
@@ -60,31 +65,27 @@ export default async function ThreadPage({
     : null;
 
   const subject = messages.find((m) => m.subject)?.subject ?? "(no subject)";
-  const language = (latestInbound?.detectedLanguage ?? null) as
-    | "en"
-    | "hi"
-    | "hinglish"
-    | null;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Lightning record highlight panel */}
-      {lead ? (
-        <LeadHighlightPanel
-          leadId={lead.id}
-          contactName={lead.contactName}
-          company={lead.company}
-          primaryEmail={lead.primaryEmail}
-          phone={lead.phone}
-          stage={lead.stage}
-          leadType={lead.leadType}
-          score={lead.score}
-          source={lead.source}
-          language={language}
-          companyNameForWhatsApp={profile?.companyName ?? "White Pops"}
-        />
-      ) : null}
-
+      {/* Minimal header bar */}
+      {lead && (
+        <div className="px-6 pt-3 pb-0 flex items-center gap-2 text-[13px] text-muted-foreground flex-wrap">
+          {lead.source === "linkedin" && (
+            <span className="h-[18px] px-1.5 rounded text-[10px] font-bold uppercase tracking-[0.08em] bg-[#0A66C2]/10 text-[#0A66C2] flex items-center">in</span>
+          )}
+          <span className="text-foreground/85 font-medium">{lead.contactName || lead.primaryEmail}</span>
+          {lead.company && <><span className="text-foreground/30">·</span><span>{lead.company}</span></>}
+          <span className="text-foreground/30">·</span>
+          <span className="font-mono text-[11px]">{lead.leadCode}</span>
+          <span className="text-foreground/30">·</span>
+          <CustomerLinkButton
+            leadId={lead.id}
+            leadContact={{ contactName: lead.contactName, primaryEmail: lead.primaryEmail, company: lead.company, phone: lead.phone }}
+            customer={linkedCustomer ? { id: linkedCustomer.id, customerCode: linkedCustomer.customerCode, name: linkedCustomer.name } : null}
+          />
+        </div>
+      )}
       {/* Body: 2-column on lg+, stacked on mobile (rail above thread) */}
       <div className="flex-1 min-h-0 overflow-auto">
         <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_320px] max-w-[1400px] mx-auto">
@@ -152,6 +153,19 @@ export default async function ThreadPage({
                 leadId={lead.id}
                 initialNotes={lead.notesForAi ?? null}
               />
+            ) : null}
+            {lead ? (
+              <div className="rounded-lg border bg-card p-3 space-y-2">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Lead</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StageSelect leadId={lead.id} currentStage={lead.stage} />
+                  <CustomerLinkButton
+                    leadId={lead.id}
+                    leadContact={{ contactName: lead.contactName, primaryEmail: lead.primaryEmail, company: lead.company, phone: lead.phone }}
+                    customer={linkedCustomer ? { id: linkedCustomer.id, customerCode: linkedCustomer.customerCode, name: linkedCustomer.name } : null}
+                  />
+                </div>
+              </div>
             ) : null}
             {lead ? (
               <SampleTracker
@@ -240,7 +254,7 @@ function Thread({
           >
             <header
               className={cn(
-                "px-4 py-2 flex items-center gap-2 text-[12px] border-b border-border/60",
+                "px-4 py-2 flex items-center gap-2 text-[13px] border-b border-border/60",
                 inbound ? "bg-muted/30" : "bg-primary/[0.04]",
               )}
             >
@@ -263,13 +277,13 @@ function Thread({
               {msg.aiCategory && msg.aiCategory !== "relevant" ? (
                 <Badge
                   variant="outline"
-                  className="text-[10px] py-0 h-4 capitalize ml-1 border-foreground/15 text-muted-foreground"
+                  className="text-[11px] py-0 h-4 capitalize ml-1 border-foreground/15 text-muted-foreground"
                 >
                   {msg.aiCategory}
                 </Badge>
               ) : null}
             </header>
-            <div className="px-4 py-3 text-[13px] leading-[1.55] whitespace-pre-wrap break-words text-foreground/90">
+            <div className="px-4 py-3 text-[14px] leading-[1.55] whitespace-pre-wrap break-words text-foreground/90">
               {msg.bodyText || (
                 <span className="italic text-muted-foreground">
                   (no content)
@@ -323,7 +337,7 @@ function DetailsCard({
         {rows.map((r) => (
           <div
             key={r.label}
-            className="flex items-center justify-between px-3 py-2 text-[12px]"
+            className="flex items-center justify-between px-3 py-2 text-[13px]"
           >
             <dt className="text-muted-foreground">{r.label}</dt>
             <dd className="text-foreground tabular-nums">{r.value}</dd>

@@ -20,13 +20,10 @@ export const dynamic = "force-dynamic";
 // Summary bar uses illustrative colours only — real counts come from the board.
 const STAGE_COLORS = [
   { id: "new",         label: "New",         color: "var(--stage-1)" },
-  { id: "qualified",   label: "Qualified",   color: "var(--stage-3)" },
   { id: "info_sent",   label: "Info Sent",   color: "var(--stage-4)" },
   { id: "negotiation", label: "Negotiation", color: "var(--stage-5)" },
-  { id: "po_received", label: "PO Received", color: "var(--stage-6)" },
+  { id: "po",          label: "PO",          color: "var(--stage-6)" },
   { id: "dispatched",  label: "Dispatched",  color: "var(--stage-2)" },
-  { id: "won",         label: "Won",         color: "var(--stage-7)" },
-  { id: "lost",        label: "Lost",        color: "var(--warn)"    },
 ];
 
 export default async function PipelinePage() {
@@ -35,6 +32,7 @@ export default async function PipelinePage() {
     db
       .select({
         id: leads.id,
+        leadCode: leads.leadCode,
         contactName: leads.contactName,
         primaryEmail: leads.primaryEmail,
         company: leads.company,
@@ -62,15 +60,15 @@ export default async function PipelinePage() {
   ]);
 
   // Group leads by stage key for the KanbanBoard.
-  // needs_review → new (inbox concept). nurture → invisible (not-interested bucket).
-  const HIDDEN_STAGES = new Set(["nurture"]);
+  const HIDDEN_STAGES = new Set(["ignored"]);
+  const VISIBLE_STAGES = new Set(["new", "info_sent", "negotiation", "po", "dispatched"]);
   const leadsByStage: Record<string, typeof leadsWithStats> = {};
   for (const lead of leadsWithStats) {
     if (HIDDEN_STAGES.has(lead.stage)) continue;
-    const key = lead.stage === "needs_review" ? "new" : lead.stage;
-    const bucket = leadsByStage[key] ?? [];
+    if (!VISIBLE_STAGES.has(lead.stage)) continue;
+    const bucket = leadsByStage[lead.stage] ?? [];
     bucket.push(lead);
-    leadsByStage[key] = bucket;
+    leadsByStage[lead.stage] = bucket;
   }
 
   const sessionUserId = session?.user?.id ?? null;
@@ -100,7 +98,7 @@ function PipelineHead({ totalLeads }: { totalLeads: number }) {
         <h1 className="serif text-[30px] leading-tight -tracking-[0.015em]">
           Pipeline
         </h1>
-        <span className="text-[13px] text-muted-foreground">
+        <span className="text-[14px] text-muted-foreground">
           {totalLeads} lead{totalLeads !== 1 ? "s" : ""}
         </span>
       </div>
@@ -155,7 +153,7 @@ function PipelineSummary({
     <Card className="p-3.5 px-4">
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex-1 min-w-[280px]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.10em] text-muted-foreground mb-1.5">
+          <div className="text-[12px] font-semibold uppercase tracking-[0.10em] text-muted-foreground mb-1.5">
             Stage distribution
           </div>
           <div className="flex h-2.5 rounded-full overflow-hidden">
@@ -173,14 +171,14 @@ function PipelineSummary({
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
             {active.map((s) => (
-              <div key={s.id} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <div key={s.id} className="flex items-center gap-1 text-[12px] text-muted-foreground">
                 <span className="size-1.5 rounded-full" style={{ background: s.color }} />
                 <span className="font-semibold text-foreground/85">{s.label}</span>
                 <span>{s.count}</span>
               </div>
             ))}
             {active.length === 0 && (
-              <span className="text-[11px] text-muted-foreground">No leads yet</span>
+              <span className="text-[12px] text-muted-foreground">No leads yet</span>
             )}
           </div>
         </div>
@@ -197,7 +195,7 @@ function PipelineSummary({
 function PipeStat({ label, v }: { label: string; v: string }) {
   return (
     <div>
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </div>
       <div className="serif tabular text-[22px] -tracking-[0.01em] mt-0.5">{v}</div>

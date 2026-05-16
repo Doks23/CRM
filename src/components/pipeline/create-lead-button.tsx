@@ -76,7 +76,7 @@ export function CreateLeadButton() {
           </SheetHeader>
           <div className="px-4 py-2 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="cl-email" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="cl-email" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Email *
               </Label>
               <Input
@@ -86,12 +86,12 @@ export function CreateLeadButton() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                className="text-[13px]"
+                className="text-[14px]"
                 autoFocus
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cl-name" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="cl-name" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Contact name
               </Label>
               <Input
@@ -99,11 +99,11 @@ export function CreateLeadButton() {
                 placeholder="Full name"
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                className="text-[13px]"
+                className="text-[14px]"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cl-company" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="cl-company" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Company
               </Label>
               <Input
@@ -111,11 +111,11 @@ export function CreateLeadButton() {
                 placeholder="Company or org name"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                className="text-[13px]"
+                className="text-[14px]"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cl-type" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="cl-type" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Lead type
               </Label>
               <select
@@ -132,7 +132,7 @@ export function CreateLeadButton() {
                 <option value="partnership">Partnership</option>
               </select>
             </div>
-            {error && <p className="text-[12px] text-destructive">{error}</p>}
+            {error && <p className="text-[13px] text-destructive">{error}</p>}
           </div>
           <SheetFooter className="px-4">
             <Button

@@ -2,18 +2,13 @@ import { cn } from "@/lib/utils";
 
 const STAGE_COLOR_VAR: Record<string, string> = {
   new: "var(--stage-1)",
-  "needs review": "var(--stage-2)",
-  qualified: "var(--stage-3)",
+  ignored: "var(--stage-8)",
   "info sent": "var(--stage-4)",
   negotiation: "var(--stage-5)",
-  "sample sent": "var(--stage-6)",
-  sample: "var(--stage-6)",
-  won: "var(--stage-7)",
-  lost: "var(--stage-8)",
+  po: "var(--stage-6)",
+  dispatched: "var(--stage-2)",
 };
 
-/** Inline stage indicator: colored dot + label. Pass any of the stage keys
- * above (case-insensitive) and the dot picks the right stage color. */
 export function StagePill({
   label,
   className,
@@ -28,7 +23,7 @@ export function StagePill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-[11.5px] font-medium text-foreground/75",
+        "inline-flex items-center gap-1.5 text-[12.5px] font-medium text-foreground/75",
         className
       )}
     >
@@ -41,7 +36,6 @@ export function StagePill({
   );
 }
 
-/** Just the colored dot — same lookup, no label. */
 export function StageDot({
   stage,
   size = 8,

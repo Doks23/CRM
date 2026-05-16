@@ -194,6 +194,7 @@ export const leads = pgTable(
   "lead",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    leadCode: text("lead_code").unique().notNull(),
     primaryEmail: text("primary_email").notNull(),
     contactName: text("contact_name"),
     company: text("company"),
@@ -206,6 +207,9 @@ export const leads = pgTable(
       onDelete: "set null",
     }),
     ownerUserId: text("owner_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    customerId: uuid("customer_id").references(() => customers.id, {
       onDelete: "set null",
     }),
     aiSummary: text("ai_summary"),
@@ -223,7 +227,6 @@ export const leads = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
-    unique("lead_primary_email_unique").on(t.primaryEmail),
     index("lead_last_activity_idx").on(t.lastActivityAt),
     index("lead_stage_idx").on(t.stage),
     index("lead_assigned_idx").on(t.assignedUserId),
@@ -324,14 +327,13 @@ export type FestiveDate = {
   /** "MM-DD" — year-agnostic */
   date: string;
   label: string;
-  /** Optional: limit to specific stages. Defaults to ["won", "info_sent", "negotiation", "nurture"]. */
+  /** Optional: limit to specific stages. Defaults to ["dispatched", "info_sent", "negotiation"]. */
   stages?: Array<
-    | "won"
+    | "new"
+    | "ignored"
     | "info_sent"
     | "negotiation"
-    | "nurture"
-    | "qualified"
-    | "po_received"
+    | "po"
     | "dispatched"
   >;
 };
@@ -409,6 +411,10 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
     fields: [leads.ownerUserId],
     references: [users.id],
     relationName: "ownedLeads",
+  }),
+  customer: one(customers, {
+    fields: [leads.customerId],
+    references: [customers.id],
   }),
   messages: many(emailMessages),
   drafts: many(aiDrafts),
@@ -637,6 +643,10 @@ export const customers = pgTable("customers", {
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
+
+export const customersRelations = relations(customers, ({ many }) => ({
+  leads: many(leads),
+}));
 
 export type Customer = typeof customers.$inferSelect;
 

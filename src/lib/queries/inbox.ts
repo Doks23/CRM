@@ -12,11 +12,12 @@ import { and, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { aiDrafts, emailMessages, leads } from "@/db/schema";
 
-export type InboxFilter = "all" | "needs_reply" | "drafts_ready" | "awaiting";
+export type InboxFilter = "all" | "new" | "draft" | "awaiting";
 
 export interface InboxThreadRow {
   gmailThreadId: string;
   leadId: string;
+  leadCode: string;
   contactName: string | null;
   primaryEmail: string;
   company: string | null;
@@ -83,18 +84,24 @@ export async function listInboxThreads({
     );
   }
 
-  if (filter === "needs_reply") {
-    // Latest message is inbound, no outbound after it.
+  if (filter === "new") {
+    // Latest message is inbound AND no draft exists yet.
     conditions.push(
       sql`(
         select m.direction from ${emailMessages} m
         where m.gmail_thread_id = ${emailMessages.gmailThreadId}
         order by m.received_at desc limit 1
       ) = 'inbound'`,
+      sql`not exists (
+        select 1 from ${aiDrafts} d
+        inner join ${emailMessages} m on m.id = d.in_reply_to_message_id
+        where m.gmail_thread_id = ${emailMessages.gmailThreadId}
+          and d.status in ('pending', 'approved', 'edited')
+      )`,
     );
   }
 
-  if (filter === "drafts_ready") {
+  if (filter === "draft") {
     conditions.push(
       sql`exists (
         select 1 from ${aiDrafts} d
@@ -119,6 +126,7 @@ export async function listInboxThreads({
     .select({
       gmailThreadId: emailMessages.gmailThreadId,
       leadId: leads.id,
+      leadCode: leads.leadCode,
       contactName: leads.contactName,
       primaryEmail: leads.primaryEmail,
       company: leads.company,
@@ -162,6 +170,7 @@ export async function listInboxThreads({
     .groupBy(
       emailMessages.gmailThreadId,
       leads.id,
+      leads.leadCode,
       leads.contactName,
       leads.primaryEmail,
       leads.company,
@@ -175,23 +184,23 @@ export async function listInboxThreads({
   return rows;
 }
 
-/** Counts for the sub-tab strip — same conditions as above, kept tiny. */
+/** Counts for sidebar folders — same conditions as above, kept tiny. */
 export async function countInboxTabs(query?: string | null): Promise<{
   all: number;
-  needs_reply: number;
-  drafts_ready: number;
+  new: number;
+  draft: number;
+  awaiting: number;
 }> {
-  // Three parallel counts. Each is just listInboxThreads().length, which is
-  // wasteful at scale but fine at 5–10 msgs/day. When the volume grows we
-  // can rewrite this as a single CTE that buckets in one pass.
-  const [all, needsReply, draftsReady] = await Promise.all([
+  const [all, newMails, drafts, awaiting] = await Promise.all([
     listInboxThreads({ filter: "all", query, limit: 1000 }),
-    listInboxThreads({ filter: "needs_reply", query, limit: 1000 }),
-    listInboxThreads({ filter: "drafts_ready", query, limit: 1000 }),
+    listInboxThreads({ filter: "new", query, limit: 1000 }),
+    listInboxThreads({ filter: "draft", query, limit: 1000 }),
+    listInboxThreads({ filter: "awaiting", query, limit: 1000 }),
   ]);
   return {
     all: all.length,
-    needs_reply: needsReply.length,
-    drafts_ready: draftsReady.length,
+    new: newMails.length,
+    draft: drafts.length,
+    awaiting: awaiting.length,
   };
 }

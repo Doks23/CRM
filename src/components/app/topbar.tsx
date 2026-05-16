@@ -15,18 +15,18 @@ export function Topbar({
 }) {
   return (
     <header className="h-[60px] flex items-center gap-3 px-7 border-b border-border bg-background">
-      <div className="flex-1 max-w-[520px] h-9 px-3 flex items-center gap-2.5 rounded-[10px] bg-card border border-border text-muted-foreground text-[13.5px] shadow-[0_1px_0_rgba(20,14,8,.03),_0_1px_2px_rgba(20,14,8,.04)]">
+      <div className="flex-1 max-w-[520px] h-9 px-3 flex items-center gap-2.5 rounded-[10px] bg-card border border-border text-muted-foreground text-[14.5px] shadow-[0_1px_0_rgba(20,14,8,.03),_0_1px_2px_rgba(20,14,8,.04)]">
         <Search className="size-4 shrink-0" strokeWidth={1.5} />
         <span className="flex-1 truncate">
           Search leads, threads, products, anything…
         </span>
-        <kbd className="font-mono text-[11px] px-1.5 py-px rounded bg-muted border border-border">
+        <kbd className="font-mono text-[12px] px-1.5 py-px rounded bg-muted border border-border">
           ⌘K
         </kbd>
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
-        <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-card border border-border text-[12px] font-medium text-foreground/80">
+        <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-card border border-border text-[13px] font-medium text-foreground/80">
           <span className="relative inline-flex size-2 rounded-full bg-pos">
             <span className="absolute inset-0 rounded-full bg-pos animate-ping opacity-60" />
           </span>

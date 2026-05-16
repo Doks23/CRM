@@ -248,7 +248,7 @@ export function GmailConnectionCard(props: Props) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border bg-card p-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div className="text-sm font-medium truncate" title={value}>
@@ -332,7 +332,7 @@ function HealthBanner({ health }: { health?: Props["health"] }) {
           ) : null}
         </p>
         {health.errorMessage ? (
-          <p className="text-[11px] text-muted-foreground mt-1 font-mono truncate">
+          <p className="text-[12px] text-muted-foreground mt-1 font-mono truncate">
             {health.errorMessage}
           </p>
         ) : null}

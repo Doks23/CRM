@@ -136,7 +136,7 @@ export function SampleTracker({ leadId, initial }: Props) {
         <div className="space-y-2 rounded-md border border-dashed p-2.5 bg-background/50">
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 SKU
               </label>
               <Input
@@ -147,7 +147,7 @@ export function SampleTracker({ leadId, initial }: Props) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 Courier
               </label>
               <Input
@@ -158,7 +158,7 @@ export function SampleTracker({ leadId, initial }: Props) {
               />
             </div>
             <div className="space-y-1 col-span-2">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 AWB / tracking
               </label>
               <Input
@@ -194,7 +194,7 @@ export function SampleTracker({ leadId, initial }: Props) {
               </Button>
             ) : null}
             {error ? (
-              <span className="text-[10px] text-destructive">{error}</span>
+              <span className="text-[11px] text-destructive">{error}</span>
             ) : null}
           </div>
         </div>
@@ -204,7 +204,7 @@ export function SampleTracker({ leadId, initial }: Props) {
 
       {rows.length > 1 ? (
         <details className="mt-2">
-          <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground">
+          <summary className="text-[12px] text-muted-foreground cursor-pointer hover:text-foreground">
             {rows.length - 1} earlier sample{rows.length - 1 === 1 ? "" : "s"}
           </summary>
           <div className="mt-1.5 space-y-1.5">
@@ -276,7 +276,7 @@ function SampleRowItem({
         ) : (
           <div className="flex items-center gap-2 flex-wrap">
             {row.sku ? (
-              <code className="text-[10px] font-mono bg-muted px-1 py-0.5 rounded">
+              <code className="text-[11px] font-mono bg-muted px-1 py-0.5 rounded">
                 {row.sku}
               </code>
             ) : null}
@@ -287,7 +287,7 @@ function SampleRowItem({
             <Badge
               variant="outline"
               className={cn(
-                "text-[9px] py-0 h-4 capitalize",
+                "text-[10px] py-0 h-4 capitalize",
                 row.status === "delivered" && "border-primary/40 text-primary",
                 row.status === "follow_up_sent" && "border-muted text-muted-foreground",
               )}
@@ -295,17 +295,17 @@ function SampleRowItem({
               {STATUS_LABELS[row.status] ?? row.status}
             </Badge>
             {row.sentAt ? (
-              <span className="text-muted-foreground text-[10px]">
+              <span className="text-muted-foreground text-[11px]">
                 sent {new Date(row.sentAt).toLocaleDateString()}
               </span>
             ) : null}
             {row.deliveredAt ? (
-              <span className="text-muted-foreground text-[10px]">
+              <span className="text-muted-foreground text-[11px]">
                 delivered {new Date(row.deliveredAt).toLocaleDateString()}
               </span>
             ) : null}
             {followUpDueSoon ? (
-              <span className="text-amber-600 text-[10px]">
+              <span className="text-amber-600 text-[11px]">
                 follow-up due
               </span>
             ) : null}
@@ -329,7 +329,7 @@ function SampleRowItem({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="text-[11px] text-muted-foreground hover:text-foreground"
+            className="text-[12px] text-muted-foreground hover:text-foreground"
           >
             edit
           </button>

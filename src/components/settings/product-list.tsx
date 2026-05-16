@@ -110,7 +110,7 @@ export function ProductList({ initial }: { initial: Product[] }) {
             <span className="flex-1 font-medium">{p.name}</span>
             {p.grade && <span className="text-xs text-muted-foreground">{p.grade}</span>}
             {p.priceWholesale && <span className="text-xs">₹{p.priceWholesale}</span>}
-            {!p.active && <span className="text-[10px] text-muted-foreground border rounded px-1">inactive</span>}
+            {!p.active && <span className="text-[11px] text-muted-foreground border rounded px-1">inactive</span>}
             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => edit(p)}><Pencil className="h-3 w-3" /></Button>
             <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="h-3 w-3" /></Button>
           </div>

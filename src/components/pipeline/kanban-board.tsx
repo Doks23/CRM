@@ -24,6 +24,7 @@ const STAGES = [
 
 interface LeadData {
   id: string;
+  leadCode: string;
   contactName: string | null;
   primaryEmail: string;
   company: string | null;

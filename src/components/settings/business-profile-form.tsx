@@ -131,7 +131,7 @@ export function BusinessProfileForm({
 "Pricing FOB Delhi hai, GST extra. 50% advance pe dispatch karte hain."
 
 The more specific, the better — this becomes the AI's voice.`}
-            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-[13px] font-mono leading-relaxed shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-[14px] font-mono leading-relaxed shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
           <p className="text-meta">
             Fed into every draft. Skip generic adjectives — write actual sentences
@@ -199,7 +199,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-8 text-[13px]"
+        className="h-8 text-[14px]"
       />
       {hint ? <p className="text-meta">{hint}</p> : null}
     </div>

@@ -1,18 +1,10 @@
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import {
   Mail,
   Sparkles,
   Clock,
   Inbox as InboxIcon,
-  Tag,
-  Globe,
-  RefreshCw,
-  Filter,
-  ArrowUpDown,
-  Send,
-  Pencil,
-  Building2,
   Layers,
   MoreHorizontal,
   ArrowDownRight,
@@ -21,13 +13,14 @@ import {
 } from "lucide-react";
 
 import { db } from "@/db";
-import { aiDrafts, emailMessages, gmailAccount, leads } from "@/db/schema";
+import { aiDrafts, emailMessages, gmailAccount, leads, customers } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SmartAvatar } from "@/components/app/smart-avatar";
 import { StagePill, StageDot } from "@/components/app/stage-pill";
 import { StageSelect } from "@/components/inbox/stage-select";
+import { CustomerLinkButton } from "@/components/inbox/customer-link-button";
 import { DraftPanel } from "@/components/inbox/draft-panel";
 import { InboxSearch } from "@/components/inbox/inbox-search";
 import {
@@ -35,8 +28,6 @@ import {
   countInboxTabs,
   type InboxFilter,
 } from "@/lib/queries/inbox";
-import { sql } from "drizzle-orm";
-
 export const dynamic = "force-dynamic";
 
 export default async function InboxPage({
@@ -44,7 +35,7 @@ export default async function InboxPage({
 }: {
   searchParams: Promise<{ t?: string; filter?: string; q?: string }>;
 }) {
-  const { t: selectedThreadId, filter = "needs_reply", q } = await searchParams;
+  const { t: selectedThreadId, filter = "new", q } = await searchParams;
 
   const [threads, counts, account] = await Promise.all([
     listInboxThreads({ filter: filter as InboxFilter, query: q ?? null, limit: 50 }),
@@ -64,22 +55,14 @@ export default async function InboxPage({
     .groupBy(leads.stage)
     .orderBy(leads.stage);
 
-  // Lead type counts for "Labels"
-  const typeCountRows = await db
-    .select({
-      leadType: leads.leadType,
-      count: sql<number>`count(*)`.mapWith(Number),
-    })
-    .from(leads)
-    .groupBy(leads.leadType);
-
   // Load selected thread content
   let selectedContent: {
     messages: (typeof emailMessages.$inferSelect)[];
-    lead: typeof leads.$inferSelect | null;
+    lead: (typeof leads.$inferSelect & { leadCode: string }) | null;
     draft: typeof aiDrafts.$inferSelect | null;
     latestInbound: typeof emailMessages.$inferSelect | null;
     profile: { companyName: string; drafterProvider: string | null; drafterModel: string | null } | null;
+    linkedCustomer: { id: string; customerCode: string; name: string } | null;
   } | null = null;
 
   if (selectedThreadId) {
@@ -103,6 +86,15 @@ export default async function InboxPage({
         })
       : null;
 
+    let linkedCustomer: { id: string; customerCode: string; name: string } | null = null;
+    if (lead?.customerId) {
+      const c = await db.query.customers.findFirst({
+        where: eq(customers.id, lead.customerId),
+        columns: { id: true, customerCode: true, name: true },
+      });
+      if (c) linkedCustomer = c;
+    }
+
     selectedContent = {
       messages: msgs,
       lead: lead ?? null,
@@ -115,6 +107,7 @@ export default async function InboxPage({
             drafterModel: profile.drafterModel,
           }
         : null,
+      linkedCustomer,
     };
   }
 
@@ -123,14 +116,9 @@ export default async function InboxPage({
     : "never";
 
   const STAGE_LABELS: Record<string, string> = {
-    new: "New", needs_review: "Needs Review", qualified: "Qualified",
-    info_sent: "Info Sent", negotiation: "Negotiation", po_received: "PO Received",
-    dispatched: "Dispatched", won: "Won", nurture: "Nurture", lost: "Lost",
-  };
-
-  const TYPE_ICONS: Record<string, typeof Tag> = {
-    bulk: Tag, retail: Tag, export: Globe, inquiry: Tag,
-    partnership: Tag, sample_request: Tag, spam: Tag,
+    new: "New", ignored: "Ignored",
+    info_sent: "Info Sent", negotiation: "Negotiation",
+    po: "PO", dispatched: "Dispatched",
   };
 
   return (
@@ -139,7 +127,7 @@ export default async function InboxPage({
       <div className="w-[220px] shrink-0 border-r border-border bg-background overflow-y-auto px-3.5 py-4 space-y-5">
         <div>
           <div className="serif text-[26px] leading-tight">Inbox</div>
-          <div className="text-[11.5px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+          <div className="text-[12.5px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
             <span className="relative inline-flex size-1.5 rounded-full bg-pos">
               <span className="absolute inset-0 rounded-full bg-pos animate-ping opacity-60" />
             </span>
@@ -149,69 +137,53 @@ export default async function InboxPage({
 
         <FolderGroup label="Triage">
           <FolderItem
-            Icon={Mail} label="Needs reply" count={counts.needs_reply}
-            hot active={filter === "needs_reply"}
-            href="/inbox?filter=needs_reply"
+            Icon={Mail} label="New Mail" count={counts.new}
+            hot active={filter === "new"}
+            href={q ? `/inbox?filter=new&q=${q}` : "/inbox?filter=new"}
           />
           <FolderItem
-            Icon={Sparkles} label="Drafts ready" count={counts.drafts_ready}
-            draft active={filter === "drafts_ready"}
-            href="/inbox?filter=drafts_ready"
+            Icon={Sparkles} label="Draft Ready" count={counts.draft}
+            draft active={filter === "draft"}
+            href={q ? `/inbox?filter=draft&q=${q}` : "/inbox?filter=draft"}
           />
           <FolderItem
-            Icon={Clock} label="All threads" count={counts.all}
+            Icon={Clock} label="All Threads" count={counts.all}
             active={filter === "all"}
-            href="/inbox?filter=all"
+            href={q ? `/inbox?filter=all&q=${q}` : "/inbox?filter=all"}
           />
           <FolderItem
-            Icon={InboxIcon} label="Awaiting them" count={Math.max(0, counts.all - counts.needs_reply)}
+            Icon={InboxIcon} label="Awaiting" count={counts.awaiting}
             active={filter === "awaiting"}
-            href="/inbox?filter=awaiting"
+            href={q ? `/inbox?filter=awaiting&q=${q}` : "/inbox?filter=awaiting"}
           />
         </FolderGroup>
 
         <FolderGroup label="By stage">
-          {stageCountRows.map((s) => (
-            <Link
-              key={s.stage}
-              href={`/inbox?filter=all&stage=${s.stage}`}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-foreground/5"
-            >
-              <StageDot stage={s.stage} />
-              <span className="flex-1">{STAGE_LABELS[s.stage] ?? s.stage}</span>
-              <span className="tabular text-[11px] font-semibold">{s.count}</span>
-            </Link>
-          ))}
+          {stageCountRows.map((s) => {
+            const key = s.stage === "po_received" ? "po" : s.stage;
+            if (["ignored", "won", "lost", "qualified", "needs_review", "nurture"].includes(s.stage)) return null;
+            if (!STAGE_LABELS[key]) return null;
+            return (
+              <Link
+                key={s.stage}
+                href={`/inbox?filter=all&stage=${s.stage}`}
+                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[14px] text-muted-foreground hover:bg-foreground/5"
+              >
+                <StageDot stage={key} />
+                <span className="flex-1">{STAGE_LABELS[key]}</span>
+                <span className="tabular text-[12px] font-semibold">{s.count}</span>
+              </Link>
+            );
+          })}
         </FolderGroup>
-
-        {typeCountRows.length > 0 && (
-          <FolderGroup label="Labels">
-            {typeCountRows.slice(0, 4).map((t) => {
-              const Icon = TYPE_ICONS[t.leadType] ?? Tag;
-              const label = t.leadType.replace(/_/g, " ");
-              return (
-                <div
-                  key={t.leadType}
-                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-foreground/5 cursor-pointer capitalize"
-                >
-                  <Icon className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
-                  <span className="flex-1">{label}</span>
-                  <span className="tabular text-[11px] font-semibold">{t.count}</span>
-                </div>
-              );
-            })}
-          </FolderGroup>
-        )}
       </div>
 
       {/* ── Thread list ───────────────────────────────────────────────── */}
       <div className="w-[360px] shrink-0 border-r border-border bg-card flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <div className="flex gap-1">
-            <TabBtn label="Needs reply" count={counts.needs_reply} active={filter === "needs_reply"} href="/inbox?filter=needs_reply" />
-            <TabBtn label="Drafts"      count={counts.drafts_ready} active={filter === "drafts_ready"} href="/inbox?filter=drafts_ready" />
-            <TabBtn label="All"         count={counts.all}          active={filter === "all"}           href="/inbox?filter=all" />
-          </div>
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
+          <span className="text-[13px] font-medium text-muted-foreground shrink-0">
+            {threads.length} thread{threads.length !== 1 ? "s" : ""}
+          </span>
           <InboxSearch initialQuery={q ?? ""} />
         </div>
 
@@ -219,11 +191,11 @@ export default async function InboxPage({
           {threads.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
               <InboxIcon className="size-8 text-muted-foreground/40 mb-3" />
-              <p className="text-[13px] font-medium text-muted-foreground">No threads</p>
-              <p className="text-[11.5px] text-muted-foreground/70 mt-1">
-                {filter === "needs_reply"
-                  ? "You're all caught up!"
-                  : filter === "drafts_ready"
+              <p className="text-[14px] font-medium text-muted-foreground">No threads</p>
+              <p className="text-[12.5px] text-muted-foreground/70 mt-1">
+                {filter === "new"
+                  ? "No new mail"
+                  : filter === "draft"
                     ? "No pending drafts"
                     : "No emails synced yet"}
               </p>
@@ -250,32 +222,28 @@ export default async function InboxPage({
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <SmartAvatar name={t.contactName ?? t.primaryEmail} size="sm" />
-                    <span className={`flex-1 truncate text-[13px] ${isUnread ? "font-semibold" : "font-medium"}`}>
+                    <span className={`flex-1 truncate text-[14px] ${isUnread ? "font-semibold" : "font-medium"}`}>
                       {t.contactName ?? t.primaryEmail}
                     </span>
-                    <span className="text-[10.5px] text-muted-foreground">{ageLabel}</span>
+                    <span className="text-[11px] font-mono text-muted-foreground">{t.leadCode}</span>
+                    <span className="text-[11.5px] text-muted-foreground">{ageLabel}</span>
                   </div>
                   {t.company && (
-                    <div className="text-[11.5px] text-muted-foreground mb-1">{t.company}</div>
+                    <div className="text-[12.5px] text-muted-foreground mb-1">{t.company}</div>
                   )}
-                  <div className={`text-[12.5px] mb-1 truncate ${isUnread ? "font-semibold" : "font-medium text-foreground/85"}`}>
+                  <div className={`text-[13.5px] mb-1 truncate ${isUnread ? "font-semibold" : "font-medium text-foreground/85"}`}>
                     {t.subject ?? "(no subject)"}
                   </div>
-                  <p className="text-[11.5px] text-muted-foreground leading-[1.4] line-clamp-2">
+                  <p className="text-[12.5px] text-muted-foreground leading-[1.4] line-clamp-2">
                     {t.latestSnippet ?? ""}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                    {t.stage && <StagePill label={t.stage} className="text-[10.5px]" dotSize={6} />}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    {t.stage && <StagePill label={STAGE_LABELS[t.stage === "po_received" ? "po" : t.stage] ?? t.stage} className="text-[11.5px]" dotSize={6} />}
                     {hasDraft && (
-                      <span className="inline-flex items-center gap-1 h-4 px-1 rounded bg-draft-tint text-draft-ink text-[9.5px] font-semibold">
+                      <span className="inline-flex items-center gap-1 h-4 px-1 rounded bg-draft-tint text-draft-ink text-[10.5px] font-semibold">
                         <span className="size-1 rounded-full bg-primary" />
                         Draft ready
                       </span>
-                    )}
-                    {t.leadType && t.leadType !== "inquiry" && (
-                      <Badge variant="outline" className="h-4 px-1 text-[9.5px] font-semibold rounded capitalize">
-                        {t.leadType.replace(/_/g, " ")}
-                      </Badge>
                     )}
                   </div>
                 </Link>
@@ -284,11 +252,11 @@ export default async function InboxPage({
           )}
         </div>
 
-        <div className="px-4 py-2.5 border-t border-border text-[11.5px] text-muted-foreground flex justify-between">
+        <div className="px-4 py-2.5 border-t border-border text-[12.5px] text-muted-foreground flex justify-between">
           <span>{threads.length} thread{threads.length !== 1 ? "s" : ""}</span>
           <span>
-            {counts.drafts_ready > 0
-              ? `${counts.drafts_ready} draft${counts.drafts_ready !== 1 ? "s" : ""} ready`
+            {counts.draft > 0
+              ? `${counts.draft} draft${counts.draft !== 1 ? "s" : ""} ready`
               : "Saathi ready"}
           </span>
         </div>
@@ -312,10 +280,10 @@ function EmptyThreadState({ hasThreads }: { hasThreads: boolean }) {
     <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
       <MessageSquare className="size-10 text-muted-foreground/30" strokeWidth={1.2} />
       <div>
-        <p className="text-[14px] font-medium text-foreground/70">
+        <p className="text-[15px] font-medium text-foreground/70">
           {hasThreads ? "Select a thread" : "Your inbox is empty"}
         </p>
-        <p className="text-[12px] text-muted-foreground mt-1">
+        <p className="text-[13px] text-muted-foreground mt-1">
           {hasThreads
             ? "Click any thread on the left to read and reply."
             : "Connect Gmail in Settings to start syncing emails."}
@@ -341,10 +309,11 @@ function SelectedThread({
     draft: typeof aiDrafts.$inferSelect | null;
     latestInbound: typeof emailMessages.$inferSelect | null;
     profile: { companyName: string; drafterProvider: string | null; drafterModel: string | null } | null;
+    linkedCustomer: { id: string; customerCode: string; name: string } | null;
   };
   threadId: string;
 }) {
-  const { messages, lead, draft, latestInbound, profile } = content;
+  const { messages, lead, draft, latestInbound, profile, linkedCustomer } = content;
   const subject = messages.find((m) => m.subject)?.subject ?? "(no subject)";
   const toEmail = latestInbound?.fromEmail ?? lead?.primaryEmail ?? "";
 
@@ -359,30 +328,23 @@ function SelectedThread({
               {messages.length} message{messages.length !== 1 ? "s" : ""}
             </Badge>
           </div>
-          <div className="flex items-center gap-3 text-[12px] text-muted-foreground flex-wrap">
-            {lead?.contactName && (
-              <div className="flex items-center gap-1.5">
-                <SmartAvatar name={lead.contactName} size="sm" />
-                <span className="font-medium text-foreground/85">{lead.contactName}</span>
-                <span>· {lead.primaryEmail}</span>
-              </div>
-            )}
-            {lead?.company && (
-              <>
-                <span className="text-foreground/30">•</span>
-                <div className="flex items-center gap-1.5">
-                  <Building2 className="size-3" strokeWidth={1.5} />
-                  <span>{lead.company}</span>
-                </div>
-              </>
-            )}
-            {lead?.stage && (
-              <>
-                <span className="text-foreground/30">•</span>
-                <StageSelect leadId={lead.id} currentStage={lead.stage} />
-              </>
-            )}
-          </div>
+          {lead && (
+            <div className="flex items-center gap-2 text-[13px] text-muted-foreground flex-wrap mt-1">
+              {lead.source === "linkedin" && (
+                <span className="h-[18px] px-1.5 rounded text-[10px] font-bold uppercase tracking-[0.08em] bg-[#0A66C2]/10 text-[#0A66C2] flex items-center">in</span>
+              )}
+              <span className="text-foreground/85 font-medium">{lead.contactName || lead.primaryEmail}</span>
+              {lead.company && <><span className="text-foreground/30">·</span><span>{lead.company}</span></>}
+              <span className="text-foreground/30">·</span>
+              <StageSelect leadId={lead.id} currentStage={lead.stage} />
+              <span className="text-foreground/30">·</span>
+              <CustomerLinkButton
+                leadId={lead.id}
+                leadContact={{ contactName: lead.contactName, primaryEmail: lead.primaryEmail, company: lead.company, phone: lead.phone }}
+                customer={linkedCustomer}
+              />
+            </div>
+          )}
         </div>
         <div className="flex gap-1.5 shrink-0">
           <Link
@@ -411,12 +373,12 @@ function SelectedThread({
                 <SmartAvatar name={author} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
-                    <span className="text-[13px] font-semibold">{author}</span>
-                    {co && <span className="text-[12px] text-muted-foreground">{co}</span>}
+                    <span className="text-[14px] font-semibold">{author}</span>
+                    {co && <span className="text-[13px] text-muted-foreground">{co}</span>}
                     {!inbound && (
-                      <Badge variant="outline" className="h-4 px-1 text-[10px]">You</Badge>
+                      <Badge variant="outline" className="h-4 px-1 text-[11px]">You</Badge>
                     )}
-                    <span className="text-[11px] text-muted-foreground ml-auto">
+                    <span className="text-[12px] text-muted-foreground ml-auto">
                       {formatDateTime(msg.receivedAt)}
                     </span>
                     <span className="ml-1">
@@ -426,7 +388,7 @@ function SelectedThread({
                     </span>
                   </div>
                   <div
-                    className={`rounded-xl px-4 py-3 text-[13.5px] leading-[1.55] text-foreground/85 whitespace-pre-wrap break-words ${
+                    className={`rounded-xl px-4 py-3 text-[14.5px] leading-[1.55] text-foreground/85 whitespace-pre-wrap break-words ${
                       inbound ? "bg-card border border-border" : "bg-draft-tint"
                     }`}
                   >
@@ -443,7 +405,7 @@ function SelectedThread({
           <div className="px-7 pb-6">
             <Card className="p-4 text-center space-y-2">
               <Sparkles className="size-6 text-muted-foreground mx-auto" />
-              <p className="text-[13px] text-muted-foreground">
+              <p className="text-[14px] text-muted-foreground">
                 This message hasn&apos;t been analyzed yet.
               </p>
               <Link href={`/inbox/${threadId}`} className={buttonVariants({ size: "sm" })}>
@@ -489,7 +451,7 @@ function SelectedThread({
 function FolderGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="px-2 pb-1.5 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className="px-2 pb-1.5 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">{label}</div>
       <div className="space-y-px">{children}</div>
     </div>
   );
@@ -504,7 +466,7 @@ function FolderItem({
   return (
     <Link
       href={href}
-      className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] ${
+      className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[14px] ${
         active
           ? "bg-card text-foreground font-medium shadow-[0_1px_0_rgba(20,14,8,.04),_0_1px_3px_rgba(20,14,8,.05)]"
           : "text-muted-foreground hover:bg-foreground/5"
@@ -517,32 +479,8 @@ function FolderItem({
       />
       <span className="flex-1">{label}</span>
       <span
-        className={`tabular text-[11px] font-semibold rounded-full px-1.5 ${
+        className={`tabular text-[12px] font-semibold rounded-full px-1.5 ${
           active ? "bg-primary text-primary-foreground" : hot ? "bg-warn-tint text-warn" : "text-muted-foreground"
-        }`}
-      >
-        {count}
-      </span>
-    </Link>
-  );
-}
-
-function TabBtn({
-  label, count, active, href,
-}: {
-  label: string; count: number; active: boolean; href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`h-7 px-2.5 text-[12px] font-medium rounded-md inline-flex items-center gap-1 ${
-        active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-foreground/5"
-      }`}
-    >
-      {label}
-      <span
-        className={`tabular text-[10.5px] font-semibold rounded-full px-1.5 ${
-          active ? "bg-background/20 text-background" : "bg-muted"
         }`}
       >
         {count}

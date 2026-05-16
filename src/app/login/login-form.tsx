@@ -43,7 +43,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="login-email" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <Label htmlFor="login-email" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
           Email
         </Label>
         <Input
@@ -52,13 +52,13 @@ export function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@company.com"
-          className="text-[13px]"
+          className="text-[14px]"
           required
           autoFocus
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="login-password" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <Label htmlFor="login-password" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
           Password
         </Label>
         <Input
@@ -67,11 +67,11 @@ export function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your password"
-          className="text-[13px]"
+          className="text-[14px]"
           required
         />
       </div>
-      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {error && <p className="text-[13px] text-destructive">{error}</p>}
       <Button type="submit" className="w-full h-11" size="lg" disabled={loading}>
         {loading ? "Signing in…" : "Sign in"}
       </Button>

@@ -94,7 +94,7 @@ export function ProfileEditor({ initial }: { initial: ProfileData | null }) {
             onChange={e => setForm(f => ({ ...f, inboxKeywords: e.target.value }))}
             placeholder="makhana, white pops, fox nut"
           />
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground">
             Comma-separated. Only emails matching these keywords enter the CRM.
           </p>
         </div>
@@ -120,7 +120,7 @@ export function ProfileEditor({ initial }: { initial: ProfileData | null }) {
 The more specific, the better — this becomes the AI's voice.`}
           className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono leading-relaxed shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[12px] text-muted-foreground">
           Fed into every draft. Skip generic adjectives — write actual sentences you'd send. Mixing languages is encouraged.
         </p>
       </div>

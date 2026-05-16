@@ -101,12 +101,12 @@ function SaveStatus({
 }) {
   if (status === "saving") {
     return (
-      <span className="text-[11px] text-muted-foreground">Saving…</span>
+      <span className="text-[12px] text-muted-foreground">Saving…</span>
     );
   }
   if (status === "saved") {
     return (
-      <span className="text-[11px] text-primary flex items-center gap-1">
+      <span className="text-[12px] text-primary flex items-center gap-1">
         <Check className="h-3 w-3" /> Saved
       </span>
     );
@@ -114,7 +114,7 @@ function SaveStatus({
   if (status === "error") {
     return (
       <span
-        className="text-[11px] text-destructive flex items-center gap-1"
+        className="text-[12px] text-destructive flex items-center gap-1"
         title={errorMessage ?? undefined}
       >
         <AlertCircle className="h-3 w-3" /> Couldn’t save

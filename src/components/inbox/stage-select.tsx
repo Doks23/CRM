@@ -6,15 +6,11 @@ import { AlertTriangle } from "lucide-react";
 
 const STAGES = [
   { value: "new", label: "New" },
-  { value: "needs_review", label: "Needs Review" },
-  { value: "qualified", label: "Qualified" },
+  { value: "ignored", label: "Ignored" },
   { value: "info_sent", label: "Info Sent" },
   { value: "negotiation", label: "Negotiation" },
-  { value: "po_received", label: "PO Received" },
+  { value: "po", label: "PO" },
   { value: "dispatched", label: "Dispatched" },
-  { value: "won", label: "Won" },
-  { value: "lost", label: "Lost" },
-  { value: "nurture", label: "Nurture" },
 ];
 
 export function StageSelect({
@@ -59,7 +55,7 @@ export function StageSelect({
         onChange={handleChange}
         disabled={saving}
         title={error ?? undefined}
-        className={`text-[11px] py-0 h-5 px-1.5 capitalize border rounded-md appearance-none cursor-pointer bg-transparent hover:bg-foreground/5 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 ${error ? "border-destructive/50" : ""} ${style}`}
+        className={`text-[12px] py-0 h-5 px-1.5 capitalize border rounded-md appearance-none cursor-pointer bg-transparent hover:bg-foreground/5 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 ${error ? "border-destructive/50" : ""} ${style}`}
         style={{ paddingRight: "18px" }}
       >
         {STAGES.map((s) => (
@@ -68,7 +64,7 @@ export function StageSelect({
           </option>
         ))}
       </select>
-      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground pointer-events-none">
+      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
         ▾
       </span>
       {saving && (
@@ -77,7 +73,7 @@ export function StageSelect({
         </span>
       )}
       {error && (
-        <div className="absolute top-full left-0 mt-1 z-10 flex items-center gap-1 text-[10px] text-destructive bg-destructive/5 border border-destructive/20 rounded px-1.5 py-0.5 whitespace-nowrap">
+        <div className="absolute top-full left-0 mt-1 z-10 flex items-center gap-1 text-[11px] text-destructive bg-destructive/5 border border-destructive/20 rounded px-1.5 py-0.5 whitespace-nowrap">
           <AlertTriangle className="size-3 shrink-0" />
           <span className="max-w-[200px] truncate">{error}</span>
         </div>
@@ -88,17 +84,12 @@ export function StageSelect({
 
 function stageTextStyle(stage: string | null): string {
   switch (stage) {
-    case "won":
-      return "bg-success/10 text-success border-success/25";
-    case "lost":
-      return "bg-destructive/10 text-destructive border-destructive/25";
-    case "po_received":
     case "dispatched":
       return "bg-info/10 text-info border-info/25";
-    case "negotiation":
+    case "po":
     case "info_sent":
       return "bg-warning/15 text-warning-foreground border-warning/30";
-    case "nurture":
+    case "ignored":
       return "bg-muted text-muted-foreground border-foreground/15";
     default:
       return "bg-muted text-foreground/80 border-foreground/15";

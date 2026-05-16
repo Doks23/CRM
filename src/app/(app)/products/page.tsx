@@ -9,7 +9,7 @@ export default async function ProductsPage() {
     <div className="p-5 lg:p-6 max-w-4xl space-y-5">
       <header>
         <h1 className="text-[22px] font-semibold -tracking-[0.01em]">Product catalog</h1>
-        <p className="text-[13px] text-muted-foreground mt-1">
+        <p className="text-[14px] text-muted-foreground mt-1">
           SKUs, grades, MOQ and pricing. Active products are passed to the AI on every draft.
         </p>
       </header>

@@ -70,7 +70,7 @@ export default async function SettingsGmailPage({
 
       {/* Owner-only hint to wire alternate accounts */}
       {isOwner && !account ? (
-        <div className="rounded-md border border-info/30 bg-info/[0.05] px-3 py-2.5 flex items-start gap-2 text-[12px]">
+        <div className="rounded-md border border-info/30 bg-info/[0.05] px-3 py-2.5 flex items-start gap-2 text-[13px]">
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-info shrink-0" />
           <p className="text-foreground/80">
             Heads up: until you reconnect, AI drafts and the Inbox will be empty.

@@ -143,7 +143,7 @@ export function FestiveDatesEditor({ initial }: Props) {
 
       <div className="flex items-end gap-2">
         <div className="space-y-1">
-          <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Date (MM-DD)
           </label>
           <Input
@@ -154,7 +154,7 @@ export function FestiveDatesEditor({ initial }: Props) {
           />
         </div>
         <div className="space-y-1 flex-1">
-          <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Label
           </label>
           <Input
@@ -172,7 +172,7 @@ export function FestiveDatesEditor({ initial }: Props) {
 
       {remaining.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Quick-add
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -181,7 +181,7 @@ export function FestiveDatesEditor({ initial }: Props) {
                 key={s.date}
                 type="button"
                 onClick={() => addSuggestion(s)}
-                className="text-[11px] rounded-md border border-dashed px-2 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="text-[12px] rounded-md border border-dashed px-2 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 + {s.label}
               </button>

@@ -32,6 +32,8 @@ Lead types (only meaningful when category="relevant"; otherwise "n/a"):
 
 Language detection: classify the email's primary language as "en" (English), "hi" (Hindi in Devanagari script), or "hinglish" (English + Hindi mixed, or Hindi written in roman letters).
 
+IMPORTANT — LinkedIn notification emails: The sender email domain will be linkedin.com or e.linkedin.com, but the email body contains a message from an actual person. Extract that person's name, company, and any contact details from the body — NOT from the email headers. These are real leads being forwarded through LinkedIn; treat them as "relevant".
+
 Be conservative: when in doubt between "relevant" and "cold", lean "relevant" with a lower confidence (0.5-0.7) so the human can review. Only mark "cold"/"spam" with high confidence if you are sure.
 
 Respond with a single JSON object matching the schema. No prose, no markdown fences.`;

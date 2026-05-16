@@ -35,7 +35,7 @@ export default async function SettingsAIPage() {
 
       <section className="rounded-lg border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border/60">
-          <h3 className="text-[13px] font-semibold">Today's AI spend</h3>
+          <h3 className="text-[14px] font-semibold">Today's AI spend</h3>
         </div>
         <div className="p-4 space-y-3">
           {cap.unlimited ? (
@@ -47,7 +47,7 @@ export default async function SettingsAIPage() {
             <>
               <div className="flex items-baseline justify-between">
                 <span className="text-eyebrow">Spent today</span>
-                <span className="text-[13px] tabular-nums">
+                <span className="text-[14px] tabular-nums">
                   ₹{cap.spentInr.toFixed(2)} / ₹{cap.capInr.toFixed(2)}
                 </span>
               </div>

@@ -30,6 +30,7 @@ export async function PATCH(
     phone: string | null;
     contactName: string | null;
     company: string | null;
+    primaryEmail: string | null;
   }>;
 
   const updates: Record<string, unknown> = {};
@@ -42,10 +43,11 @@ export async function PATCH(
     return t.length > 0 ? t : null;
   }
 
-  if (body.notesForAi !== undefined)  updates.notesForAi  = trimOrNull(body.notesForAi);
-  if (body.phone !== undefined)       updates.phone       = trimOrNull(body.phone);
-  if (body.contactName !== undefined) updates.contactName = trimOrNull(body.contactName);
-  if (body.company !== undefined)     updates.company     = trimOrNull(body.company);
+  if (body.notesForAi !== undefined)  updates.notesForAi    = trimOrNull(body.notesForAi);
+  if (body.phone !== undefined)       updates.phone         = trimOrNull(body.phone);
+  if (body.contactName !== undefined) updates.contactName   = trimOrNull(body.contactName);
+  if (body.company !== undefined)     updates.company       = trimOrNull(body.company);
+  if (body.primaryEmail !== undefined) updates.primaryEmail = trimOrNull(body.primaryEmail);
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -60,6 +62,8 @@ export async function PATCH(
       notesForAi: leads.notesForAi,
       phone: leads.phone,
       contactName: leads.contactName,
+      company: leads.company,
+      primaryEmail: leads.primaryEmail,
     });
 
   if (!updated) {

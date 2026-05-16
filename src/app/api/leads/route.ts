@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { leads } from "@/db/schema";
+import { nextLeadCode } from "@/lib/next-code";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -29,10 +30,11 @@ export async function POST(req: NextRequest) {
   const leadType = validLeadTypes.includes(body.leadType ?? "") ? (body.leadType as "bulk" | "retail" | "inquiry" | "partnership" | "export" | "sample_request") : "inquiry";
 
   try {
+    const code = await nextLeadCode();
     const [lead] = await db
       .insert(leads)
       .values({
-        id: crypto.randomUUID(),
+        leadCode: code,
         primaryEmail: email,
         contactName: body.contactName?.trim() || null,
         company: body.company?.trim() || null,
@@ -43,14 +45,10 @@ export async function POST(req: NextRequest) {
         lastActivityAt: new Date(),
         firstContactAt: new Date(),
       })
-      .returning({ id: leads.id });
+      .returning({ id: leads.id, leadCode: leads.leadCode });
 
-    return NextResponse.json({ id: lead.id }, { status: 201 });
-  } catch (e) {
-    const msg = (e as Error).message ?? "";
-    if (msg.includes("unique") || msg.includes("duplicate")) {
-      return NextResponse.json({ error: "A lead with this email already exists" }, { status: 409 });
-    }
+    return NextResponse.json({ id: lead.id, leadCode: lead.leadCode }, { status: 201 });
+  } catch {
     return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
   }
 }

@@ -36,15 +36,15 @@ export default async function SamplesPage() {
     <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-border">
         <h1 className="text-[26px] serif leading-tight">Samples</h1>
-        <p className="text-[13px] text-muted-foreground mt-0.5">
+        <p className="text-[14px] text-muted-foreground mt-0.5">
           {rows.length} sample{rows.length !== 1 ? "s" : ""} dispatched
         </p>
       </div>
       <div className="flex-1 overflow-y-auto p-6">
         {rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-            <p className="text-[14px] font-medium">No samples dispatched yet</p>
-            <p className="text-[12px] mt-1">Samples will appear here once dispatched from a lead thread.</p>
+            <p className="text-[15px] font-medium">No samples dispatched yet</p>
+            <p className="text-[13px] mt-1">Samples will appear here once dispatched from a lead thread.</p>
           </div>
         ) : (
           <div className="space-y-2 max-w-3xl">
@@ -52,8 +52,8 @@ export default async function SamplesPage() {
               <div key={s.id} className="rounded-lg border px-4 py-3 flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[13px] font-medium">{s.sku}</span>
-                    <span className={`text-[10px] px-1.5 py-px rounded-full font-medium capitalize ${
+                    <span className="text-[14px] font-medium">{s.sku}</span>
+                    <span className={`text-[11px] px-1.5 py-px rounded-full font-medium capitalize ${
                       s.status === "delivered" ? "bg-pos-tint text-pos" :
                       s.status === "in_transit" ? "bg-info-tint text-info" :
                       s.status === "closed" ? "bg-muted text-muted-foreground" :
@@ -63,11 +63,11 @@ export default async function SamplesPage() {
                     </span>
                   </div>
                   {s.leadName && (
-                    <Link href={`/inbox/${s.leadId}`} className="text-[12px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+                    <Link href={`/inbox/${s.leadId}`} className="text-[13px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
                       {s.leadName}{s.leadEmail ? ` · ${s.leadEmail}` : ""}
                     </Link>
                   )}
-                  <div className="text-[11px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
+                  <div className="text-[12px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
                     {s.quantityNote && <span>Qty: {s.quantityNote}</span>}
                     {s.courier && <span>{s.courier}{s.awb ? `: ${s.awb}` : ""}</span>}
                     {s.sentAt && <span>Sent {new Date(s.sentAt).toLocaleDateString()}</span>}

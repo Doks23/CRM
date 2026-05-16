@@ -95,7 +95,7 @@ export function InventoryClient({ items: initial }: { items: InventoryItem[] }) 
                   <div>
                     <h3 className="font-semibold text-sm flex items-center gap-2">
                       {item.productName}
-                      <Badge variant="outline" className="text-[10px] py-0 h-4 font-mono">
+                      <Badge variant="outline" className="text-[11px] py-0 h-4 font-mono">
                         {item.sku}
                       </Badge>
                     </h3>
@@ -109,17 +109,17 @@ export function InventoryClient({ items: initial }: { items: InventoryItem[] }) 
                       <div className="text-2xl font-bold tabular-nums">
                         {item.quantity}
                       </div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      <div className="text-[11px] text-muted-foreground uppercase tracking-wider">
                         In stock
                       </div>
                     </div>
                     {isLow ? (
-                      <Badge variant="destructive" className="text-[10px] py-0 h-5">
+                      <Badge variant="destructive" className="text-[11px] py-0 h-5">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         Low stock
                       </Badge>
                     ) : item.quantity === 0 ? (
-                      <Badge variant="secondary" className="text-[10px] py-0 h-5">
+                      <Badge variant="secondary" className="text-[11px] py-0 h-5">
                         Out of stock
                       </Badge>
                     ) : null}

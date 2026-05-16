@@ -267,7 +267,7 @@ export function DraftPanel({
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">AI Draft</span>
-            <Badge variant="outline" className="text-[10px] py-0 h-4 capitalize">
+            <Badge variant="outline" className="text-[11px] py-0 h-4 capitalize">
               {draft.status}
             </Badge>
           </div>

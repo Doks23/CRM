@@ -6,9 +6,8 @@ import { Search, X } from "lucide-react";
 /**
  * Compact search input for the Inbox toolbar.
  *
- * Preserves the rest of the query string (e.g. ?filter=drafts_ready) so
- * filter + search stack correctly. The submit-on-Enter pattern beats
- * live-search at small volume — quieter API surface, no debounce needed.
+ * Preserves the rest of the query string (e.g. ?filter=new) so
+ * filter + search stack correctly.
  */
 export function InboxSearch({ initialQuery }: { initialQuery: string }) {
   const router = useRouter();
@@ -34,7 +33,7 @@ export function InboxSearch({ initialQuery }: { initialQuery: string }) {
         name="q"
         defaultValue={initialQuery}
         placeholder="Search threads…"
-        className="w-full h-7 pl-7 pr-7 rounded text-[12px] bg-muted/40 border border-transparent hover:border-input focus:bg-background focus:border-input focus:outline-none transition-colors placeholder:text-muted-foreground"
+        className="w-full h-7 pl-7 pr-7 rounded text-[13px] bg-muted/40 border border-transparent hover:border-input focus:bg-background focus:border-input focus:outline-none transition-colors placeholder:text-muted-foreground"
       />
       {initialQuery && (
         <button

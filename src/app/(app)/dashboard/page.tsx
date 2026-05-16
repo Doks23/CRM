@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   ]);
 
   const tileMap = new Map(tiles.map((t) => [t.key, t]));
-  const needsReply = tileMap.get("needs_reply")?.count ?? 0;
+  const needsReply = tileMap.get("new")?.count ?? 0;
   const draftsPending = tileMap.get("drafts_pending")?.count ?? 0;
   const samplesFollowup = tileMap.get("samples_followup")?.count ?? 0;
   const reorderDue = tileMap.get("reorder_due")?.count ?? 0;
@@ -146,8 +146,8 @@ export default async function DashboardPage() {
           <h1 className="serif text-[32px] font-normal leading-[1.1] -tracking-[0.015em]">
             {greeting}, {firstName}.
           </h1>
-          <span className="text-[14px] text-muted-foreground">
-            <em className="serif italic text-foreground text-[15.5px]">
+          <span className="text-[15px] text-muted-foreground">
+            <em className="serif italic text-foreground text-[16.5px]">
               {needsReply === 0 ? "No threads" : needsReply === 1 ? "One thread" : `${needsReply} threads`}
             </em>{" "}
             unread · {activePipelineLeads} active in pipeline
@@ -220,16 +220,16 @@ export default async function DashboardPage() {
           },
         ].map((k) => (
           <Card key={k.label} className="p-4 gap-2">
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.10em] text-muted-foreground">
+            <div className="text-[11.5px] font-semibold uppercase tracking-[0.10em] text-muted-foreground">
               {k.label}
             </div>
             <div className="flex items-baseline justify-between gap-2">
               <span className="serif tabular text-[42px] leading-none font-normal">{k.value}</span>
-              <span className={`inline-flex items-center h-[18px] px-1.5 rounded text-[10px] font-semibold whitespace-nowrap ${k.deltaCls}`}>
+              <span className={`inline-flex items-center h-[18px] px-1.5 rounded text-[11px] font-semibold whitespace-nowrap ${k.deltaCls}`}>
                 {k.delta}
               </span>
             </div>
-            <div className="text-[11.5px] text-muted-foreground">{k.sub}</div>
+            <div className="text-[12.5px] text-muted-foreground">{k.sub}</div>
             <Sparkline data={k.spark} width={240} height={28} color={k.color} />
           </Card>
         ))}
@@ -243,9 +243,9 @@ export default async function DashboardPage() {
               <span className="inline-flex size-[22px] rounded-[7px] bg-gradient-to-br from-primary to-[oklch(0.55_0.13_150)] items-center justify-center text-primary-foreground shadow-[0_4px_10px_oklch(0.48_0.11_162/0.35)]">
                 <Sparkles className="size-3.5" strokeWidth={1.8} />
               </span>
-              <span className="font-heading text-[14px] font-semibold">Today&apos;s focus</span>
+              <span className="font-heading text-[15px] font-semibold">Today&apos;s focus</span>
               {draftsPending > 0 && (
-                <span className="inline-flex items-center gap-1.5 h-[18px] px-1.5 rounded bg-draft-tint text-draft-ink text-[10px] font-semibold">
+                <span className="inline-flex items-center gap-1.5 h-[18px] px-1.5 rounded bg-draft-tint text-draft-ink text-[11px] font-semibold">
                   <span className="size-1.5 rounded-full bg-primary" />
                   {draftsPending} draft{draftsPending !== 1 ? "s" : ""} ready
                 </span>
@@ -254,13 +254,13 @@ export default async function DashboardPage() {
                 <Link href="/inbox" className={buttonVariants({ variant: "ghost", size: "xs" })}>
                   View all {needsReply}
                 </Link>
-                <Link href="/inbox?filter=needs_reply" className={buttonVariants({ variant: "ghost", size: "xs" })}>
+                <Link href="/inbox?filter=new" className={buttonVariants({ variant: "ghost", size: "xs" })}>
                   <Filter className="size-3" /> Filter
                 </Link>
               </div>
             </div>
             {focusLeads.length === 0 ? (
-              <div className="px-5 py-8 text-center text-[13px] text-muted-foreground">
+              <div className="px-5 py-8 text-center text-[14px] text-muted-foreground">
                 No pending drafts — you&apos;re all caught up!
               </div>
             ) : (
@@ -279,35 +279,35 @@ export default async function DashboardPage() {
                       <SmartAvatar name={r.contactName ?? r.leadId} size="lg" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-[13.5px] font-semibold">{r.contactName ?? r.leadId}</span>
+                          <span className="text-[14.5px] font-semibold">{r.contactName ?? r.leadId}</span>
                           {r.company && (
-                            <span className="text-[12.5px] text-muted-foreground">· {r.company}</span>
+                            <span className="text-[13.5px] text-muted-foreground">· {r.company}</span>
                           )}
-                          <Badge variant="outline" className="text-[10.5px] font-semibold rounded capitalize">
+                          <Badge variant="outline" className="text-[11.5px] font-semibold rounded capitalize">
                             {typeLabel}
                           </Badge>
                           {confPct !== null && (
-                            <span className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded bg-draft-tint text-draft-ink text-[10.5px] font-semibold whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded bg-draft-tint text-draft-ink text-[11.5px] font-semibold whitespace-nowrap">
                               <span className="size-1.5 rounded-full bg-primary" />
                               {confPct}% confidence
                             </span>
                           )}
                         </div>
                         {r.draftBody && (
-                          <p className="serif italic text-[13px] text-foreground/85 leading-[1.45] mb-2 line-clamp-2">
+                          <p className="serif italic text-[14px] text-foreground/85 leading-[1.45] mb-2 line-clamp-2">
                             &ldquo;{r.draftBody.slice(0, 180)}&hellip;&rdquo;
                           </p>
                         )}
                         {r.aiReason && (
-                          <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
                             <Sparkles className="size-3 text-primary" strokeWidth={1.6} />
                             <span className="line-clamp-1">{r.aiReason}</span>
                           </div>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className="text-[11px] text-muted-foreground tabular">
-                          {ageLabel} · <StagePill label={r.stage} className="text-[10px]" dotSize={5} />
+                        <span className="text-[12px] text-muted-foreground tabular">
+                          {ageLabel} · <StagePill label={r.stage} className="text-[11px]" dotSize={5} />
                         </span>
                         <div className="flex gap-1.5">
                           {r.gmailThreadId && (
@@ -339,12 +339,12 @@ export default async function DashboardPage() {
           <Card className="p-5 gap-3">
             <div className="flex items-start justify-between">
               <div>
-                <div className="font-heading text-[14px] font-semibold">Inbox pulse</div>
-                <div className="text-[12px] text-muted-foreground mt-0.5">
+                <div className="font-heading text-[15px] font-semibold">Inbox pulse</div>
+                <div className="text-[13px] text-muted-foreground mt-0.5">
                   Inbound threads · last 14 days
                 </div>
               </div>
-              <div className="flex gap-4 text-[11px] text-muted-foreground">
+              <div className="flex gap-4 text-[12px] text-muted-foreground">
                 <Legend color="var(--primary)" label="Relevant" v={String(totalRelevant)} />
                 <Legend color="var(--muted-foreground)" label="Other" v={String(totalOther)} />
                 <Legend color="var(--surface-3)" label="Cold" v={String(totalCold)} />
@@ -365,8 +365,8 @@ export default async function DashboardPage() {
           <Card className="p-5 gap-3">
             <div className="flex items-start justify-between">
               <div>
-                <div className="font-heading text-[14px] font-semibold">Pipeline pulse</div>
-                <div className="text-[12px] text-muted-foreground mt-0.5">
+                <div className="font-heading text-[15px] font-semibold">Pipeline pulse</div>
+                <div className="text-[13px] text-muted-foreground mt-0.5">
                   {totalLeads} lead{totalLeads !== 1 ? "s" : ""} across {stageRows.length} stage{stageRows.length !== 1 ? "s" : ""}
                 </div>
               </div>
@@ -375,7 +375,7 @@ export default async function DashboardPage() {
               </Link>
             </div>
             {totalLeads === 0 ? (
-              <p className="text-[12px] text-muted-foreground text-center py-4">No leads yet</p>
+              <p className="text-[13px] text-muted-foreground text-center py-4">No leads yet</p>
             ) : (
               <>
                 <div className="flex h-3 rounded-full overflow-hidden">
@@ -387,7 +387,7 @@ export default async function DashboardPage() {
                     />
                   ))}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-y-1.5 gap-x-3 text-[12px]">
+                <div className="mt-2 grid grid-cols-2 gap-y-1.5 gap-x-3 text-[13px]">
                   {stageRows.map((s) => (
                     <div key={s.stage} className="flex items-center gap-2">
                       <span
@@ -404,7 +404,7 @@ export default async function DashboardPage() {
               </>
             )}
             {needsReply > 0 && (
-              <div className="mt-2 flex gap-2.5 px-3.5 py-2.5 rounded-[10px] bg-draft-tint text-[12px] text-draft-ink">
+              <div className="mt-2 flex gap-2.5 px-3.5 py-2.5 rounded-[10px] bg-draft-tint text-[13px] text-draft-ink">
                 <Sparkles className="size-3.5 text-primary shrink-0 mt-0.5" strokeWidth={1.8} />
                 <div>
                   <strong>{needsReply} thread{needsReply !== 1 ? "s" : ""} need{needsReply === 1 ? "s" : ""} a reply.</strong>{" "}
@@ -419,12 +419,12 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="size-3.5 text-primary" />
-                <div className="font-heading text-[14px] font-semibold">Saathi activity</div>
+                <div className="font-heading text-[15px] font-semibold">Saathi activity</div>
               </div>
-              <Badge variant="outline" className="text-[10px]">last 24h</Badge>
+              <Badge variant="outline" className="text-[11px]">last 24h</Badge>
             </div>
             {recentCalls.length === 0 ? (
-              <p className="text-[12px] text-muted-foreground">No AI activity yet.</p>
+              <p className="text-[13px] text-muted-foreground">No AI activity yet.</p>
             ) : (
               <div className="space-y-2.5">
                 {recentCalls.slice(0, 5).map((c) => {
@@ -442,9 +442,9 @@ export default async function DashboardPage() {
                     ? `Drafted reply · ${c.provider}/${c.model}${c.latencyMs ? ` · ${(c.latencyMs / 1000).toFixed(1)}s` : ""}`
                     : `Classified email · ${c.provider}/${c.model}`;
                   return (
-                    <div key={c.id} className="flex items-center gap-2.5 text-[12.5px]">
+                    <div key={c.id} className="flex items-center gap-2.5 text-[13.5px]">
                       <span className="font-mono text-muted-foreground tabular w-[38px]">{time}</span>
-                      <span className={`inline-flex items-center h-[18px] px-1.5 rounded text-[10px] font-semibold capitalize whitespace-nowrap ${tone}`}>
+                      <span className={`inline-flex items-center h-[18px] px-1.5 rounded text-[11px] font-semibold capitalize whitespace-nowrap ${tone}`}>
                         {c.task}
                       </span>
                       <span className="text-foreground/85 line-clamp-1">{text}</span>
@@ -453,7 +453,7 @@ export default async function DashboardPage() {
                 })}
               </div>
             )}
-            <div className="mt-2 pt-3 border-t border-border flex justify-between text-[12px] text-muted-foreground">
+            <div className="mt-2 pt-3 border-t border-border flex justify-between text-[13px] text-muted-foreground">
               <span>
                 Spent{" "}
                 <strong className="tabular text-foreground">
@@ -498,13 +498,13 @@ function InboxPulseChart({
                 }}
               >
                 {isToday && v > 0 && (
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[11px] font-semibold text-draft-ink whitespace-nowrap">
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[12px] font-semibold text-draft-ink whitespace-nowrap">
                     {v} today
                   </div>
                 )}
               </div>
             </div>
-            <div className={`text-[10px] ${isToday ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+            <div className={`text-[11px] ${isToday ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
               {dayNum}
             </div>
           </div>
@@ -527,10 +527,10 @@ function Legend({ color, label, v }: { color: string; label: string; v: string }
 function Stat({ label, v, delta }: { label: string; v: string; delta: string }) {
   return (
     <div>
-      <div className="text-[10.5px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">{label}</div>
+      <div className="text-[11.5px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">{label}</div>
       <div className="flex items-baseline gap-1.5 mt-0.5">
         <span className="tabular text-[18px] font-semibold -tracking-[0.01em]">{v}</span>
-        {delta && <span className="text-[10.5px] font-semibold text-pos">{delta}</span>}
+        {delta && <span className="text-[11.5px] font-semibold text-pos">{delta}</span>}
       </div>
     </div>
   );
