@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { emailMessages, leads } from "@/db/schema";
 import { Sidebar } from "@/components/app/sidebar";
 import { Topbar } from "@/components/app/topbar";
+import { CreateLeadButton } from "@/components/pipeline/create-lead-button";
+import { Providers } from "@/components/providers";
 
 const INACTIVE_STAGES = new Set(["won", "lost", "nurture", "needs_review"]);
 
@@ -53,18 +55,21 @@ export default async function AppLayout({
     .reduce((s, r) => s + r.count, 0);
 
   return (
+    <Providers>
     <div className="flex min-h-screen bg-background">
       <Sidebar
         userInitial={initial}
         userName={session.user.name ?? session.user.email ?? "User"}
         userEmail={session.user.email ?? ""}
+        userRole={session.user.role ?? "Owner"}
         inboxCount={inboxCount}
         pipelineCount={pipelineCount}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
+        <Topbar newButton={<CreateLeadButton />} />
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
+    </Providers>
   );
 }

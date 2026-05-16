@@ -30,17 +30,13 @@ interface Props {
   };
 }
 
-// Values are minutes. `0` means "no skip" — the gmail-poll cron fires every
-// 2 minutes and a 0 interval lets every cron tick actually sync.
 const INTERVAL_OPTIONS = [
-  { value: 0, label: "As fast as possible" },
-  { value: 5, label: "Every 5 minutes" },
+  { value: 1, label: "Every 1 minute" },
   { value: 15, label: "Every 15 minutes" },
-  { value: 30, label: "Every 30 minutes" },
   { value: 120, label: "Every 2 hours" },
   { value: 360, label: "Every 6 hours" },
   { value: 720, label: "Every 12 hours" },
-  { value: 1440, label: "Once a day" },
+  { value: 1440, label: "Every 24 hours" },
 ];
 
 export function GmailConnectionCard(props: Props) {

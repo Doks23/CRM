@@ -12,7 +12,7 @@ import { and, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { aiDrafts, emailMessages, leads } from "@/db/schema";
 
-export type InboxFilter = "all" | "needs_reply" | "drafts_ready";
+export type InboxFilter = "all" | "needs_reply" | "drafts_ready" | "awaiting";
 
 export interface InboxThreadRow {
   gmailThreadId: string;
@@ -102,6 +102,16 @@ export async function listInboxThreads({
         where m.gmail_thread_id = ${emailMessages.gmailThreadId}
           and d.status in ('pending', 'approved', 'edited')
       )`,
+    );
+  }
+
+  if (filter === "awaiting") {
+    conditions.push(
+      sql`(
+        select m.direction from ${emailMessages} m
+        where m.gmail_thread_id = ${emailMessages.gmailThreadId}
+        order by m.received_at desc limit 1
+      ) = 'outbound'`,
     );
   }
 

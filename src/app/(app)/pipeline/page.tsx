@@ -186,7 +186,7 @@ function PipelineSummary({
         </div>
         <div className="w-px self-stretch bg-border" />
         <div className="flex gap-5 flex-wrap">
-          <PipeStat label="Total leads" v={String(total === 1 ? 0 : total)} />
+          <PipeStat label="Total leads" v={String(total)} />
           <PipeStat label="Stages active" v={String(active.length)} />
         </div>
       </div>

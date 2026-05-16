@@ -8,6 +8,13 @@
       "when": 1778845626609,
       "tag": "0000_late_northstar",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778931989279,
+      "tag": "0001_stormy_shiver_man",
+      "breakpoints": true
     }
   ]
 }

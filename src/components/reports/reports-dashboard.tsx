@@ -3,11 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AlertCircle,
-  ArrowUpRight,
   Mail,
   Sparkles,
-  TrendingUp,
   Users,
 } from "lucide-react";
 
@@ -533,7 +530,3 @@ function formatTime(iso: string): string {
   });
 }
 
-// Unused but kept available for future arrow-tagged tabs
-void ArrowUpRight;
-void TrendingUp;
-void AlertCircle;

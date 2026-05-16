@@ -50,23 +50,41 @@ export function TeamManager({ initial }: { initial: TeamData }) {
 
   const handleRemove = (emailToRemove: string) => {
     startTransition(async () => {
-      await fetch("/api/users", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailToRemove }),
-      });
-      router.refresh();
+      setError(null);
+      try {
+        const res = await fetch("/api/users", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailToRemove }),
+        });
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.error || "Failed to remove");
+        }
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to remove user");
+      }
     });
   };
 
   const setActive = (userId: string, active: boolean) => {
     startTransition(async () => {
-      await fetch(`/api/users/${userId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ active }),
-      });
-      router.refresh();
+      setError(null);
+      try {
+        const res = await fetch(`/api/users/${userId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ active }),
+        });
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.error || "Failed to update");
+        }
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to update user");
+      }
     });
   };
 
@@ -227,6 +245,7 @@ export function TeamManager({ initial }: { initial: TeamData }) {
           </div>
         </div>
       )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

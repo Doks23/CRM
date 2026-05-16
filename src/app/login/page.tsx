@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/app/brand-mark";
+import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
   searchParams,
@@ -20,23 +21,32 @@ export default async function LoginPage({
         ? "Your account is pending approval. The owner will activate it shortly."
         : error === "AccessDenied"
           ? "This Google account is not on the invite list."
-          : error
-            ? "Sign-in failed. Please try again."
-            : null;
+          : error === "InvalidLogin"
+            ? "Invalid email or password."
+            : error
+              ? "Sign-in failed. Please try again."
+              : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-emerald-50/30 to-white dark:from-zinc-950 dark:via-emerald-950/20 dark:to-zinc-950 p-4">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-7">
-          <BrandMark size={80} withWordmark layout="stacked" />
+          <BrandMark withWordmark />
         </div>
 
-        <p className="text-center text-meta mb-5">
-          Sign in with the Google account on your invite.
-        </p>
-
         <Card className="shadow-sm border-zinc-200/80 dark:border-zinc-800/80">
-          <CardContent className="pt-6 pb-6 px-6">
+          <CardContent className="pt-6 pb-6 px-6 space-y-5">
+            <LoginForm />
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
             <form
               action={async () => {
                 "use server";
@@ -45,6 +55,7 @@ export default async function LoginPage({
             >
               <Button
                 type="submit"
+                variant="outline"
                 className="w-full h-11 font-medium"
                 size="lg"
               >
@@ -54,7 +65,7 @@ export default async function LoginPage({
             </form>
 
             {errorMessage ? (
-              <p className="mt-4 text-sm text-destructive text-center">
+              <p className="text-sm text-destructive text-center">
                 {errorMessage}
               </p>
             ) : null}
@@ -62,8 +73,7 @@ export default async function LoginPage({
         </Card>
 
         <p className="mt-6 text-xs text-center text-muted-foreground">
-          Only invited team members can access. The owner manages the allowlist
-          in <span className="text-foreground">Settings → Team</span>.
+          Only invited team members can access.
         </p>
       </div>
     </div>

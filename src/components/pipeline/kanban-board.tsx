@@ -63,7 +63,9 @@ export function KanbanBoard({
           body: JSON.stringify({ leadId, stage }),
         });
         router.refresh();
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.error("Failed to move lead stage:", err);
+      }
     });
   };
 

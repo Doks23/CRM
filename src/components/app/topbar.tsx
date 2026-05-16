@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
  */
 export function Topbar({
   syncedLabel = "Gmail · synced 2m ago",
+  newButton,
 }: {
   syncedLabel?: string;
+  newButton?: React.ReactNode;
 }) {
   return (
     <header className="h-[60px] flex items-center gap-3 px-7 border-b border-border bg-background">
@@ -39,13 +41,15 @@ export function Topbar({
           <RefreshCw className="size-4" />
         </Button>
 
-        <Button
-          size="default"
-          className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_1px_0_rgba(255,255,255,0.15)_inset,_0_6px_18px_oklch(0.48_0.11_162/0.32)]"
-        >
-          <Plus className="size-4" strokeWidth={2} data-icon="inline-start" />
-          New
-        </Button>
+        {newButton ?? (
+          <Button
+            size="default"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_1px_0_rgba(255,255,255,0.15)_inset,_0_6px_18px_oklch(0.48_0.11_162/0.32)]"
+          >
+            <Plus className="size-4" strokeWidth={2} data-icon="inline-start" />
+            New
+          </Button>
+        )}
 
         <UserMenu />
       </div>

@@ -96,6 +96,7 @@ export const users = pgTable("user", {
   email: text("email").unique().notNull(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  hash: text("hash"),
   role: userRoleEnum("role").notNull().default("sales"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
@@ -618,6 +619,26 @@ export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
     references: [leads.id],
   }),
 }));
+
+// ────────────────────────────────────────────────────────────────────────────
+// Customers
+// ────────────────────────────────────────────────────────────────────────────
+
+export const customers = pgTable("customers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  customerCode: text("customer_code").unique().notNull(),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  company: text("company"),
+  address: text("address"),
+  gstin: text("gstin"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export type Customer = typeof customers.$inferSelect;
 
 // Type helpers
 export type User = typeof users.$inferSelect;

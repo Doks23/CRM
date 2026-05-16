@@ -248,7 +248,7 @@ export function DraftPanel({
     await regenerateDraft({
       leadId,
       inReplyToMessageId:
-        inboundMessageId ?? draft.inReplyToMessageId ?? draft.id,
+        inboundMessageId ?? draft.inReplyToMessageId ?? "",
       instructions,
       setIsRegenerating,
       setError,

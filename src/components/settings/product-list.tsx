@@ -28,7 +28,15 @@ export function ProductList({ initial }: { initial: Product[] }) {
   const [form, setForm] = useState({ sku: "", name: "", grade: "", packSize: "", moq: "", priceRetail: "", priceWholesale: "", stockNote: "" });
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = () => { fetch("/api/products").then(r => r.json()).then(setProducts); router.refresh(); };
+  const refresh = async () => {
+    try {
+      const res = await fetch("/api/products");
+      if (!res.ok) return;
+      const data = await res.json();
+      setProducts(data);
+    } catch { /* ignore — server will re-fetch on next navigation */ }
+    router.refresh();
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -46,9 +54,18 @@ export function ProductList({ initial }: { initial: Product[] }) {
   };
 
   const handleDelete = async (id: string) => {
+    setError(null);
     startTransition(async () => {
-      await fetch(`/api/products/${id}`, { method: "DELETE" });
-      refresh();
+      try {
+        const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.error || "Failed to delete");
+        }
+        refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Delete failed");
+      }
     });
   };
 

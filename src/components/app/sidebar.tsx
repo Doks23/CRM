@@ -10,8 +10,10 @@ import {
   BarChart3,
   Package,
   Leaf,
+  Layers,
   Settings,
   ChevronUp,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "./brand-mark";
@@ -26,21 +28,28 @@ type NavItem = {
 type NavGroup = { label: string; items: NavItem[] };
 
 const groups: NavGroup[] = [
-  {
+    {
     label: "WORK",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/inbox", label: "Inbox", icon: Inbox },
       { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-      { href: "/contacts", label: "Contacts", icon: Users },
+      { href: "/customers", label: "Customers", icon: Users },
       { href: "/reports", label: "Reports", icon: BarChart3 },
     ],
   },
-  {
+    {
     label: "CATALOG",
     items: [
       { href: "/products", label: "Products", icon: Package },
+      { href: "/inventory", label: "Inventory", icon: Layers },
       { href: "/samples", label: "Samples", icon: Leaf },
+    ],
+  },
+  {
+    label: "ADMIN",
+    items: [
+      { href: "/employees", label: "Employees", icon: UserPlus },
     ],
   },
   {
@@ -53,12 +62,14 @@ export function Sidebar({
   userInitial = "S",
   userName = "Saurabh Dokania",
   userEmail = "doks23@gmail.com",
+  userRole = "Owner",
   inboxCount = 0,
   pipelineCount = 0,
 }: {
   userInitial?: string;
   userName?: string;
   userEmail?: string;
+  userRole?: string;
   inboxCount?: number;
   pipelineCount?: number;
 }) {
@@ -78,7 +89,9 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 px-3 pb-3 space-y-5 overflow-y-auto">
-        {groups.map((g) => (
+        {groups
+          .filter((g) => g.label !== "ADMIN" || userRole === "owner")
+          .map((g) => (
           <div key={g.label}>
             <div className="px-2 pb-1.5 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
               {g.label}
@@ -141,7 +154,7 @@ export function Sidebar({
             {userName}
           </div>
           <div className="text-[10.5px] text-muted-foreground truncate">
-            Owner · {userEmail}
+            {userRole} · {userEmail}
           </div>
         </div>
         <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />

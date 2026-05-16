@@ -109,8 +109,8 @@ export const sampleFollowup = inngest.createFunction(
         });
 
         const lang =
-          (thread.findLast?.((m) => !!m.detectedLanguage)?.detectedLanguage ??
-            "en") as LeadLanguage;
+          (thread.slice().reverse().find((m) => !!m.detectedLanguage)
+            ?.detectedLanguage ?? "en") as LeadLanguage;
 
         const synthClassification: ClassifyOutput = {
           category: "relevant" as AiCategory,

@@ -7,7 +7,6 @@ import {
   CalendarHeart,
   Mail,
   Sparkles,
-  Users,
   UserCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -24,7 +23,6 @@ interface Item {
 const items: Item[] = [
   { href: "/settings/account", label: "My account", icon: UserCircle },
   { href: "/settings/profile", label: "Company & voice", icon: Building2 },
-  { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/greetings", label: "Greetings", icon: CalendarHeart },
   { href: "/settings/ai", label: "AI providers", icon: Sparkles },
   { href: "/settings/gmail", label: "Gmail connection", icon: Mail },

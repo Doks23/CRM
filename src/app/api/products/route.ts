@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { products } from "@/db/schema";
+import { inventory, products } from "@/db/schema";
 import { auth } from "@/auth";
 
 export async function GET() {
@@ -24,9 +24,20 @@ export async function POST(req: NextRequest) {
 
   const values: Record<string, unknown> = {};
   for (const key of ALLOWED_FIELDS) {
-    if (body[key] !== undefined) values[key] = body[key];
+    if (body[key] === undefined) continue;
+    if (key === "moq" || key === "priceRetail" || key === "priceWholesale") {
+      values[key] = Number(body[key]);
+      if (isNaN(values[key] as number)) {
+        return NextResponse.json({ error: `Invalid ${key}: must be a number` }, { status: 400 });
+      }
+    } else {
+      values[key] = body[key];
+    }
   }
 
   const [product] = await db.insert(products).values(values as any).returning();
+
+  await db.insert(inventory).values({ productId: product.id, quantity: 0 });
+
   return NextResponse.json(product);
 }

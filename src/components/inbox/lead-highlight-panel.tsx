@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { WhatsAppButton } from "./whatsapp-button";
+import { StageSelect } from "./stage-select";
 
 interface HighlightField {
   label: string;
@@ -57,7 +58,7 @@ export function LeadHighlightPanel({
   const displayName = contactName ?? primaryEmail;
 
   const fields: HighlightField[] = [
-    { label: "Stage", value: <StageBadge stage={stage} /> },
+    { label: "Stage", value: <StageSelect leadId={leadId} currentStage={stage} /> },
     {
       label: "Type",
       value: leadType && leadType !== "n/a" ? (

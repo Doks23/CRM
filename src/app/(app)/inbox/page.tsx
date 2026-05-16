@@ -27,7 +27,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SmartAvatar } from "@/components/app/smart-avatar";
 import { StagePill, StageDot } from "@/components/app/stage-pill";
+import { StageSelect } from "@/components/inbox/stage-select";
 import { DraftPanel } from "@/components/inbox/draft-panel";
+import { InboxSearch } from "@/components/inbox/inbox-search";
 import {
   listInboxThreads,
   countInboxTabs,
@@ -40,13 +42,13 @@ export const dynamic = "force-dynamic";
 export default async function InboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string; filter?: string }>;
+  searchParams: Promise<{ t?: string; filter?: string; q?: string }>;
 }) {
-  const { t: selectedThreadId, filter = "needs_reply" } = await searchParams;
+  const { t: selectedThreadId, filter = "needs_reply", q } = await searchParams;
 
   const [threads, counts, account] = await Promise.all([
-    listInboxThreads({ filter: filter as InboxFilter, limit: 50 }),
-    countInboxTabs(),
+    listInboxThreads({ filter: filter as InboxFilter, query: q ?? null, limit: 50 }),
+    countInboxTabs(q ?? null),
     db.query.gmailAccount.findFirst({
       columns: { email: true, lastPolledAt: true },
     }),
@@ -163,7 +165,8 @@ export default async function InboxPage({
           />
           <FolderItem
             Icon={InboxIcon} label="Awaiting them" count={Math.max(0, counts.all - counts.needs_reply)}
-            href="/inbox?filter=all"
+            active={filter === "awaiting"}
+            href="/inbox?filter=awaiting"
           />
         </FolderGroup>
 
@@ -209,10 +212,7 @@ export default async function InboxPage({
             <TabBtn label="Drafts"      count={counts.drafts_ready} active={filter === "drafts_ready"} href="/inbox?filter=drafts_ready" />
             <TabBtn label="All"         count={counts.all}          active={filter === "all"}           href="/inbox?filter=all" />
           </div>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon-xs"><ArrowUpDown className="size-3.5" /></Button>
-            <Button variant="ghost" size="icon-xs"><Filter className="size-3.5" /></Button>
-          </div>
+          <InboxSearch initialQuery={q ?? ""} />
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -379,7 +379,7 @@ function SelectedThread({
             {lead?.stage && (
               <>
                 <span className="text-foreground/30">•</span>
-                <StagePill label={lead.stage} />
+                <StageSelect leadId={lead.id} currentStage={lead.stage} />
               </>
             )}
           </div>

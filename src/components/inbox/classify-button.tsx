@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, type MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
@@ -35,12 +35,12 @@ export function ClassifyButton({
         throw new Error(data.error ?? "Classification failed");
       }
 
-      const done = await pollForResult(gmailMessageId, cleanup);
+      const done = await pollForResult(gmailMessageId, pollRef);
       if (done) {
         router.refresh();
       } else {
         throw new Error(
-          "AI analysis is taking longer than expected. Check that the Inngest dev server is running (http://localhost:8288) and try again.",
+          "AI analysis is taking longer than expected. The worker may be busy or an error occurred. Check the Reports page for the AI activity log and try again.",
         );
       }
     } catch (err) {
@@ -79,26 +79,25 @@ export function ClassifyButton({
 
 async function pollForResult(
   gmailMessageId: string,
-  cleanup: () => void,
+  pollRef: MutableRefObject<ReturnType<typeof setTimeout> | null>,
 ): Promise<boolean> {
   const maxAttempts = 20;
   const delay = 2000;
   for (let i = 0; i < maxAttempts; i++) {
-    await new Promise((r) => {
-      const id = setTimeout(r, delay);
-      // Store timeout ref so cleanup can cancel it
-      // (We can't use ref directly in this standalone function, but we pass cleanup)
-      if (i === 0) {
-        // First iteration, nothing to clean up
-      }
+    await new Promise<void>((r) => {
+      pollRef.current = setTimeout(r, delay);
     });
-    const res = await fetch(
-      `/api/inbox/classify/status?gmailMessageId=${encodeURIComponent(gmailMessageId)}`,
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (data.done) return true;
-      if (data.error) return false;
+    try {
+      const res = await fetch(
+        `/api/inbox/classify/status?gmailMessageId=${encodeURIComponent(gmailMessageId)}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.done) return true;
+        if (data.error) return false;
+      }
+    } catch {
+      return false;
     }
   }
   return false;

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil, X } from "lucide-react";
+import { Pencil, X, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AssignDialog } from "./assign-dialog";
 import { EditLeadDialog } from "./edit-lead-dialog";
@@ -43,18 +43,28 @@ export function LeadCard({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [dismissed, setDismissed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const daysSinceActivity = daysAgo(lead.lastActivityAt);
   const assignee = users.find(u => u.id === lead.assignedUserId);
 
   const markNotInterested = () => {
+    setError(null);
     startTransition(async () => {
-      await fetch(`/api/leads/${lead.id}/stage`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: "nurture" }),
-      });
-      setDismissed(true);
-      router.refresh();
+      try {
+        const res = await fetch(`/api/leads/${lead.id}/stage`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage: "nurture" }),
+        });
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.error || "Failed to update");
+        }
+        setDismissed(true);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong");
+      }
     });
   };
 
@@ -120,6 +130,12 @@ export function LeadCard({
         ) : null}
         <AssignDialog leadId={lead.id} currentUserId={lead.assignedUserId} sessionUserId={sessionUserId} users={users} />
       </div>
+      {error && (
+        <div className="px-3 pb-2 flex items-center gap-1 text-[10px] text-destructive">
+          <AlertTriangle className="size-3 shrink-0" />
+          <span className="line-clamp-1">{error}</span>
+        </div>
+      )}
     </div>
   );
 }

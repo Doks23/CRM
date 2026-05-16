@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { eq } from "drizzle-orm";
+import { compare } from "bcryptjs";
+import Credentials from "next-auth/providers/credentials";
 
 import { authConfig } from "./auth.config";
 import { db } from "./db";
@@ -12,8 +14,39 @@ import {
   type AllowedEmail,
 } from "./db/schema";
 
+const credentialsProvider = Credentials({
+  name: "credentials",
+  credentials: {
+    email: { label: "Email", type: "email" },
+    password: { label: "Password", type: "password" },
+  },
+  async authorize(credentials) {
+    const email = (credentials.email as string)?.toLowerCase();
+    const password = credentials.password as string;
+    if (!email || !password) return null;
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, email),
+    });
+    if (!user || !user.hash) return null;
+    if (!user.active) return null;
+
+    const valid = await compare(password, user.hash);
+    if (!valid) return null;
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
+      role: user.role,
+    };
+  },
+});
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  providers: [...authConfig.providers, credentialsProvider],
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
@@ -25,10 +58,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
 
-    async signIn({ user, profile: googleProfile }) {
+    async signIn({ user, account, profile: googleProfile }) {
       const email = user.email?.toLowerCase();
       if (!email) return false;
 
+      // Credentials users are already authenticated & active; let them through.
+      if (account?.provider === "credentials") return true;
+
+      // Google OAuth: check the allowlist.
       const profile = await db.query.businessProfile.findFirst();
       if (!profile?.allowedEmails) return false;
 
@@ -48,10 +85,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .set({ role: entry.role })
             .where(eq(users.id, existing.id));
         }
-        // Blocked until owner approves.
         if (!existing.active) return "/login?error=pending_approval";
       } else if (entry.role !== "owner") {
-        // New non-owner: pre-create with active=false so owner must approve.
         await db
           .insert(users)
           .values({
