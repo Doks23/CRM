@@ -23,12 +23,14 @@ export function BrandMark({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
+    setError(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -38,14 +40,19 @@ export function BrandMark({
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `Upload failed (${res.status})`);
+      }
       const { url } = await res.json();
 
       startTransition(() => {
         onLogoChange?.(url);
       });
     } catch (err) {
-      console.error(err);
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setError(msg);
+      console.error("Logo upload error:", err);
     } finally {
       setUploading(false);
     }
@@ -75,11 +82,11 @@ export function BrandMark({
             w
           </span>
         )}
-        {editable && (
+{editable && (
           <button
             onClick={() => inputRef.current?.click()}
             disabled={uploading || pending}
-            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full"
+            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full cursor-pointer"
           >
             {uploading || pending ? (
               <span className="text-[10px] text-white">...</span>
@@ -87,6 +94,11 @@ export function BrandMark({
               <Upload className="size-4 text-white" />
             )}
           </button>
+        )}
+        {error && (
+          <div className="absolute -bottom-5 left-0 right-0 text-[10px] text-red-500 text-center whitespace-nowrap">
+            {error}
+          </div>
         )}
         <input
           ref={inputRef}

@@ -101,7 +101,7 @@ export function Sidebar({
         <Link href="/dashboard" className="block">
           <BrandMark
             logoUrl={logoUrl}
-            editable={userRole === "owner"}
+            editable={userRole?.toLowerCase() === "owner"}
             onLogoChange={handleLogoChange}
           />
         </Link>
