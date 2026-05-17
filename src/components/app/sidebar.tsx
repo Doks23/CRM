@@ -1,8 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Inbox,
@@ -77,18 +76,6 @@ export function Sidebar({
   logoUrl?: string | null;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [, startTransition] = useTransition();
-
-  const handleLogoChange = (url: string) => {
-    fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ logoUrl: url }),
-    }).then(() => {
-      startTransition(() => router.refresh());
-    });
-  };
 
   const dynamicBadges: Record<string, number | undefined> = {
     "/inbox": inboxCount > 0 ? inboxCount : undefined,
@@ -99,11 +86,7 @@ export function Sidebar({
     <aside className="w-[232px] shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
       <div className="px-4 pt-5 pb-3">
         <Link href="/dashboard" className="block">
-          <BrandMark
-            logoUrl={logoUrl}
-            editable={userRole?.toLowerCase() === "owner"}
-            onLogoChange={handleLogoChange}
-          />
+          <BrandMark logoUrl={logoUrl} />
         </Link>
       </div>
 

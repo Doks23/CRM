@@ -1,9 +1,14 @@
+import { redirect } from "next/navigation";
 import { BusinessProfileForm } from "@/components/settings/business-profile-form";
 import { getBusinessProfile } from "@/lib/business-profile";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsProfilePage() {
+  const session = await auth();
+  if (session?.user?.role !== "owner") redirect("/settings");
+
   const profile = await getBusinessProfile();
   return (
     <div className="space-y-4">
