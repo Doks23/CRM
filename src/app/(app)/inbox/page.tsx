@@ -22,6 +22,7 @@ import { SmartAvatar } from "@/components/app/smart-avatar";
 import { StagePill, StageDot } from "@/components/app/stage-pill";
 import { StageSelect } from "@/components/inbox/stage-select";
 import { CustomerLinkButton } from "@/components/inbox/customer-link-button";
+import { SyncStatus } from "@/components/inbox/sync-status";
 import { DraftPanel } from "@/components/inbox/draft-panel";
 import { InboxSearch } from "@/components/inbox/inbox-search";
 import { DeleteLeadButton } from "@/components/inbox/delete-lead-button";
@@ -113,10 +114,6 @@ export default async function InboxPage({
     };
   }
 
-  const syncedAgo = account?.lastPolledAt
-    ? formatRelative(account.lastPolledAt)
-    : "never";
-
   const STAGE_LABELS: Record<string, string> = {
     new: "New", ignored: "Ignored",
     info_sent: "Info Sent", negotiation: "Negotiation",
@@ -129,12 +126,7 @@ export default async function InboxPage({
       <div className="w-[220px] shrink-0 border-r border-border bg-background overflow-y-auto px-3.5 py-4 space-y-5">
         <div>
           <div className="serif text-[26px] leading-tight">Inbox</div>
-          <div className="text-[12.5px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
-            <span className="relative inline-flex size-1.5 rounded-full bg-pos">
-              <span className="absolute inset-0 rounded-full bg-pos animate-ping opacity-60" />
-            </span>
-            {account?.email ?? "not connected"} · {syncedAgo}
-          </div>
+          <SyncStatus email={account?.email ?? null} lastPolledAt={account?.lastPolledAt ?? null} />
         </div>
 
         <FolderGroup label="Triage">
@@ -498,15 +490,7 @@ function FolderItem({
   );
 }
 
-function formatRelative(d: Date | string): string {
-  const date = typeof d === "string" ? new Date(d) : d;
-  const m = Math.floor((Date.now() - date.getTime()) / 60_000);
-  if (m < 2) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
+
 
 function formatDateTime(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;
