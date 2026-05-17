@@ -16,6 +16,7 @@ import { aiCalls, aiDrafts, emailMessages, leads } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ReSyncButton } from "@/components/app/re-sync-button";
 import { SmartAvatar } from "@/components/app/smart-avatar";
 import { Sparkline } from "@/components/app/sparkline";
 import { StagePill } from "@/components/app/stage-pill";
@@ -156,11 +157,7 @@ export default async function DashboardPage() {
             {dateLabel}
           </Badge>
           <div className="w-px h-[18px] bg-border" />
-          <form action="/api/gmail/sync" method="POST">
-            <Button variant="outline" size="sm" type="submit">
-              <RefreshCw className="size-3.5" /> Re-sync
-            </Button>
-          </form>
+          <ReSyncButton />
           <Link href="/reports" className={buttonVariants({ variant: "outline", size: "sm" })}>
             <Download className="size-3.5" /> Reports
           </Link>

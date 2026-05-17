@@ -115,7 +115,7 @@ export default function AccountPage() {
             onUpload={handleAvatarChange}
           />
           <div>
-            <div className="font-semibold text-[16px]">{user.name || "—"}</div>
+            <div className="font-semibold text-[16px]">{name || "—"}</div>
             <div className="text-[13.5px] text-muted-foreground">{user.email}</div>
             <Badge variant="outline" className="capitalize text-[12px] mt-1">
               {(user as { role?: string }).role ?? "sales"}

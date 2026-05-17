@@ -109,10 +109,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (email) {
         const dbUser = await db.query.users.findFirst({
           where: eq(users.email, email.toLowerCase()),
-          columns: { id: true, role: true, active: true, avatarUrl: true },
+          columns: { id: true, name: true, role: true, active: true, avatarUrl: true },
         });
         if (dbUser) {
           token.userId = dbUser.id;
+          token.name = dbUser.name;
           token.role = dbUser.role;
           token.active = dbUser.active;
           token.avatarUrl = dbUser.avatarUrl;

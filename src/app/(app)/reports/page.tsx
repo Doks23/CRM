@@ -2,17 +2,18 @@ import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sparkline } from "@/components/app/sparkline";
 import { Donut } from "@/components/app/donut";
 import { CompanyLogo } from "@/components/app/smart-avatar";
-import { Sparkles, Download, Flame, ChevronRight } from "lucide-react";
+import { Sparkles, Download, Flame, ChevronRight, Loader2, Check } from "lucide-react";
 import { db } from "@/db";
 import { emailMessages, leads, aiDrafts, aiCalls } from "@/db/schema";
 import { PIPELINE_STAGES, normalizeStage } from "@/lib/pipeline-stages";
 import { getAiCostCapStatus } from "@/lib/ai";
 import { loadInboundTrend } from "@/lib/queries/worklist";
+import { ExportButton } from "@/components/app/export-button";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,13 @@ function fmtInr(n: number) {
   if (n >= 100_000) return `₹${(n / 100_000).toFixed(1)}L`;
   if (n >= 1_000) return `₹${(n / 1_000).toFixed(1)}K`;
   return `₹${n.toFixed(2)}`;
+}
+function fmtDuration(ms: number | null): string {
+  if (ms === null || ms === undefined) return "—";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 3600000) return `${Math.floor(ms / 60000)}m`;
+  return `${(ms / 3600000).toFixed(1)}h`;
 }
 function relTime(date: Date | null) {
   if (!date) return "—";
@@ -126,6 +134,7 @@ export default async function ReportsPage({
 
   const [
     [emailStatsRow],
+    [threadStatsRow],
     trend14d,
     stageRows,
     [draftStatsRow],
@@ -134,6 +143,7 @@ export default async function ReportsPage({
     [aiTodayRow],
     aiDailyRows,
     outboundDailyRows,
+    [latencyRow],
     topLeadsRaw,
   ] = await Promise.all([
     db
@@ -141,7 +151,16 @@ export default async function ReportsPage({
         inbound: sql<number>`count(*) filter (where ${emailMessages.direction} = 'inbound')`.mapWith(Number),
         outbound: sql<number>`count(*) filter (where ${emailMessages.direction} = 'outbound')`.mapWith(Number),
       })
-      .from(emailMessages),
+      .from(emailMessages)
+      .where(gte(emailMessages.receivedAt, sinceDate)),
+
+    db
+      .select({
+        inboundThreads: sql<number>`count(distinct ${emailMessages.gmailThreadId}) filter (where ${emailMessages.direction} = 'inbound')`.mapWith(Number),
+        repliedThreads: sql<number>`count(distinct ${emailMessages.gmailThreadId}) filter (where ${emailMessages.direction} = 'outbound')`.mapWith(Number),
+      })
+      .from(emailMessages)
+      .where(gte(emailMessages.receivedAt, sinceDate)),
 
     loadInboundTrend(windowDays),
 
@@ -162,7 +181,8 @@ export default async function ReportsPage({
         sent: sql<number>`count(*) filter (where ${aiDrafts.status} = 'sent')`.mapWith(Number),
         discarded: sql<number>`count(*) filter (where ${aiDrafts.status} = 'discarded')`.mapWith(Number),
       })
-      .from(aiDrafts),
+      .from(aiDrafts)
+      .where(gte(aiDrafts.createdAt, sinceDate)),
 
     db
       .select({
@@ -209,6 +229,31 @@ export default async function ReportsPage({
 
     db
       .select({
+        avgLatencyMs: sql<number | null>`
+          (
+            select avg(extract(epoch from (fo.t - fi.t)) * 1000)
+            from (
+              select gmail_thread_id, min(received_at) as t
+              from email_message
+              where direction = 'inbound'
+                and received_at >= ${sinceDate}
+              group by gmail_thread_id
+            ) fi
+            join (
+              select gmail_thread_id, min(received_at) as t
+              from email_message
+              where direction = 'outbound'
+                and received_at >= ${sinceDate}
+              group by gmail_thread_id
+            ) fo using (gmail_thread_id)
+            where fo.t > fi.t
+          )
+        `.mapWith(Number),
+      })
+      .from(sql`(select 1) as dummy`),
+
+    db
+      .select({
         id: leads.id,
         company: leads.company,
         contactName: leads.contactName,
@@ -230,6 +275,9 @@ export default async function ReportsPage({
   const totalOutbound = emailStatsRow?.outbound ?? 0;
   const replyRate =
     totalInbound > 0 ? Math.round((totalOutbound / totalInbound) * 100) : 0;
+  const inboundThreads = threadStatsRow?.inboundThreads ?? 0;
+  const repliedThreads = threadStatsRow?.repliedThreads ?? 0;
+  const avgLatencyMs = latencyRow?.avgLatencyMs ?? null;
 
   // Normalize any legacy enum values onto the current pipeline ids so old
   // rows aren't silently dropped from totals.
@@ -307,8 +355,8 @@ export default async function ReportsPage({
   const inboundTotalWindow = inboundDaily.reduce((s, n) => s + n, 0);
   const outboundTotalWindow = outboundDaily.reduce((s, n) => s + n, 0);
   const replyRateWindow =
-    inboundTotalWindow > 0
-      ? Math.round((outboundTotalWindow / inboundTotalWindow) * 100)
+    inboundThreads > 0
+      ? Math.round((repliedThreads / inboundThreads) * 100)
       : 0;
 
   // Split the window in half for trend deltas. For very short windows the
@@ -394,10 +442,11 @@ export default async function ReportsPage({
           inboundDaily={inboundDaily}
           outboundDaily={outboundDaily}
           totalInbound={inboundTotalWindow}
-          totalOutbound={outboundTotalWindow}
+          totalReplied={repliedThreads}
           replyRate={replyRateWindow}
           windowDays={windowDays}
           rangeLabel={range.label}
+          avgLatencyMs={avgLatencyMs}
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
@@ -454,12 +503,7 @@ function ReportsHero({ range, label }: { range: RangeKey; label: string }) {
             </Link>
           ))}
         </div>
-        <a
-          href={`/api/reports/export?range=${range}`}
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          <Download className="size-3.5" /> Export CSV
-        </a>
+        <ExportButton range={range} />
       </div>
     </div>
   );
@@ -620,18 +664,20 @@ function InboxHealth({
   inboundDaily,
   outboundDaily,
   totalInbound,
-  totalOutbound,
+  totalReplied,
   replyRate,
   windowDays,
   rangeLabel,
+  avgLatencyMs,
 }: {
   inboundDaily: number[];
   outboundDaily: number[];
   totalInbound: number;
-  totalOutbound: number;
+  totalReplied: number;
   replyRate: number;
   windowDays: number;
   rangeLabel: string;
+  avgLatencyMs: number | null;
 }) {
   const max = Math.max(...inboundDaily, 1);
   const labels = inboundDaily.map((_, i) => {
@@ -680,9 +726,9 @@ function InboxHealth({
       </div>
       <div className="mt-2 pt-3 border-t border-border grid grid-cols-2 gap-2 text-[13px]">
         <KV k="Total inbound" v={String(totalInbound)} />
-        <KV k="Total replied" v={String(totalOutbound)} />
+        <KV k="Total replied" v={String(totalReplied)} />
         <KV k="Reply rate" v={fmtPct(replyRate)} pos={replyRate >= 70} />
-        <KV k="Avg latency" v="—" />
+        <KV k="Avg latency" v={fmtDuration(avgLatencyMs)} />
       </div>
     </Card>
   );

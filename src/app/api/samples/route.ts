@@ -3,7 +3,7 @@ import { desc, eq } from "drizzle-orm";
 
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { sampleDispatches } from "@/db/schema";
+import { leads, sampleDispatches } from "@/db/schema";
 
 const FOLLOWUP_DAYS_DEFAULT = 3;
 
@@ -58,23 +58,45 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(row);
 }
 
-/** GET /api/samples?leadId=... — recent samples for a lead. */
+/** GET /api/samples — all samples (with optional ?leadId= filter). */
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
   const leadId = req.nextUrl.searchParams.get("leadId");
-  if (!leadId) {
-    return NextResponse.json({ error: "leadId is required" }, { status: 400 });
+
+  if (leadId) {
+    const rows = await db
+      .select()
+      .from(sampleDispatches)
+      .where(eq(sampleDispatches.leadId, leadId))
+      .orderBy(desc(sampleDispatches.createdAt))
+      .limit(20);
+    return NextResponse.json(rows);
   }
 
   const rows = await db
-    .select()
+    .select({
+      id: sampleDispatches.id,
+      sku: sampleDispatches.sku,
+      quantityNote: sampleDispatches.quantityNote,
+      status: sampleDispatches.status,
+      courier: sampleDispatches.courier,
+      awb: sampleDispatches.awb,
+      sentAt: sampleDispatches.sentAt,
+      deliveredAt: sampleDispatches.deliveredAt,
+      followUpDueAt: sampleDispatches.followUpDueAt,
+      note: sampleDispatches.note,
+      createdAt: sampleDispatches.createdAt,
+      leadName: leads.contactName,
+      leadEmail: leads.primaryEmail,
+      leadId: leads.id,
+    })
     .from(sampleDispatches)
-    .where(eq(sampleDispatches.leadId, leadId))
-    .orderBy(desc(sampleDispatches.createdAt))
-    .limit(20);
+    .leftJoin(leads, eq(leads.id, sampleDispatches.leadId))
+    .orderBy(desc(sampleDispatches.createdAt));
 
   return NextResponse.json(rows);
 }

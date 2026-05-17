@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 
 interface Product {
@@ -54,6 +55,7 @@ export function ProductList({ initial }: { initial: Product[] }) {
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this product?")) return;
     setError(null);
     startTransition(async () => {
       try {
@@ -85,15 +87,39 @@ export function ProductList({ initial }: { initial: Product[] }) {
 
       {showForm && (
         <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <Input placeholder="SKU" value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
-            <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            <Input placeholder="Grade" value={form.grade} onChange={e => setForm(f => ({ ...f, grade: e.target.value }))} />
-            <Input placeholder="Pack size" value={form.packSize} onChange={e => setForm(f => ({ ...f, packSize: e.target.value }))} />
-            <Input placeholder="MOQ" type="number" value={form.moq} onChange={e => setForm(f => ({ ...f, moq: e.target.value }))} />
-            <Input placeholder="Retail price INR" value={form.priceRetail} onChange={e => setForm(f => ({ ...f, priceRetail: e.target.value }))} />
-            <Input placeholder="Wholesale price INR" value={form.priceWholesale} onChange={e => setForm(f => ({ ...f, priceWholesale: e.target.value }))} />
-            <Input placeholder="Stock note" value={form.stockNote} onChange={e => setForm(f => ({ ...f, stockNote: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+            <div className="space-y-1">
+              <Label>SKU</Label>
+              <Input placeholder="e.g. COT-001" value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input placeholder="Product name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Grade</Label>
+              <Input placeholder="e.g. A, B, premium" value={form.grade} onChange={e => setForm(f => ({ ...f, grade: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Pack size</Label>
+              <Input placeholder="e.g. 25 kg, 1 ton" value={form.packSize} onChange={e => setForm(f => ({ ...f, packSize: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>MOQ</Label>
+              <Input placeholder="Minimum order qty" type="number" value={form.moq} onChange={e => setForm(f => ({ ...f, moq: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Retail price (INR)</Label>
+              <Input placeholder="0.00" value={form.priceRetail} onChange={e => setForm(f => ({ ...f, priceRetail: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Wholesale price (INR)</Label>
+              <Input placeholder="0.00" value={form.priceWholesale} onChange={e => setForm(f => ({ ...f, priceWholesale: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Stock note</Label>
+              <Input placeholder="e.g. In stock, 2-week lead" value={form.stockNote} onChange={e => setForm(f => ({ ...f, stockNote: e.target.value }))} />
+            </div>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2 justify-end">

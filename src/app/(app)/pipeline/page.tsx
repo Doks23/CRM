@@ -1,19 +1,11 @@
 import { desc, eq, isNull, sql } from "drizzle-orm";
-import {
-  Filter,
-  ArrowUpDown,
-  Users,
-  Grid3x3,
-  List,
-} from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { leads, emailMessages, users } from "@/db/schema";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
-import { CreateLeadButton } from "@/components/pipeline/create-lead-button";
+import { PipelineToolbar } from "@/components/pipeline/pipeline-toolbar";
 import { PIPELINE_STAGES } from "@/lib/pipeline-stages";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +13,16 @@ export const dynamic = "force-dynamic";
 // Summary bar shares the canonical stage definition with the funnel.
 const STAGE_COLORS = PIPELINE_STAGES;
 
-export default async function PipelinePage() {
-  const [session, leadsWithStats, allUsers] = await Promise.all([
-    auth(),
+export default async function PipelinePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}) {
+  const { mine } = await searchParams;
+  const session = await auth();
+  const sessionUserId = session?.user?.id ?? null;
+
+  const [leadsWithStats, allUsers] = await Promise.all([
     db
       .select({
         id: leads.id,
@@ -31,6 +30,8 @@ export default async function PipelinePage() {
         contactName: leads.contactName,
         primaryEmail: leads.primaryEmail,
         company: leads.company,
+        phone: leads.phone,
+        notesForAi: leads.notesForAi,
         leadType: leads.leadType,
         stage: leads.stage,
         score: leads.score,
@@ -46,7 +47,11 @@ export default async function PipelinePage() {
       })
       .from(leads)
       .leftJoin(emailMessages, eq(emailMessages.leadId, leads.id))
-      .where(isNull(leads.deletedAt))
+      .where(
+        mine === "true" && sessionUserId
+          ? sql`${leads.deletedAt} is null and ${leads.assignedUserId} = ${sessionUserId}`
+          : isNull(leads.deletedAt)
+      )
       .groupBy(leads.id)
       .orderBy(desc(leads.lastActivityAt)),
     db.query.users.findMany({
@@ -67,8 +72,7 @@ export default async function PipelinePage() {
     leadsByStage[lead.stage] = bucket;
   }
 
-  const sessionUserId = session?.user?.id ?? null;
-  const totalLeads = leadsWithStats.length;
+  const totalLeads = Object.values(leadsByStage).flat().length;
 
   // Count distribution for the summary bar.
   const stageCounts = STAGE_COLORS.map((s) => ({
@@ -78,7 +82,7 @@ export default async function PipelinePage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)] min-h-0 p-5 lg:p-6 gap-3.5">
-      <PipelineHead totalLeads={totalLeads} />
+      <PipelineHead totalLeads={totalLeads} mine={mine === "true"} />
       <PipelineSummary stageCounts={stageCounts} />
       <div className="flex-1 min-h-0">
         <KanbanBoard leadsByStage={leadsByStage} users={allUsers} sessionUserId={sessionUserId} />
@@ -87,7 +91,7 @@ export default async function PipelinePage() {
   );
 }
 
-function PipelineHead({ totalLeads }: { totalLeads: number }) {
+function PipelineHead({ totalLeads, mine }: { totalLeads: number; mine: boolean }) {
   return (
     <div className="flex items-center justify-between flex-wrap gap-3">
       <div className="flex items-baseline gap-3.5 flex-wrap">
@@ -98,43 +102,8 @@ function PipelineHead({ totalLeads }: { totalLeads: number }) {
           {totalLeads} lead{totalLeads !== 1 ? "s" : ""}
         </span>
       </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="inline-flex items-center bg-card border border-border rounded-lg p-0.5">
-          <ViewToggle Icon={Grid3x3} active />
-          <ViewToggle Icon={List} />
-        </div>
-        <Button variant="outline" size="sm">
-          <Users className="size-3.5" /> Mine
-        </Button>
-        <Button variant="outline" size="sm">
-          <Filter className="size-3.5" /> Filter
-        </Button>
-        <Button variant="outline" size="sm">
-          <ArrowUpDown className="size-3.5" /> Sort
-        </Button>
-        <CreateLeadButton />
-      </div>
+      <PipelineToolbar mine={mine} />
     </div>
-  );
-}
-
-function ViewToggle({
-  Icon,
-  active,
-}: {
-  Icon: typeof Grid3x3;
-  active?: boolean;
-}) {
-  return (
-    <button
-      className={`h-7 w-8 grid place-items-center rounded-md ${
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:bg-foreground/5"
-      }`}
-    >
-      <Icon className="size-3.5" strokeWidth={1.8} />
-    </button>
   );
 }
 

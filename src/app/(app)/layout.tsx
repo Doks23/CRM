@@ -71,6 +71,7 @@ export default async function AppLayout({
         inboxCount={inboxCount}
         pipelineCount={pipelineCount}
         logoUrl={profile?.logoUrl ?? null}
+        userAvatar={session.user.avatarUrl ?? session.user.image ?? null}
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar newButton={<CreateLeadButton />} />

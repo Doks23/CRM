@@ -268,7 +268,7 @@ export default async function InboxPage({
         {selectedContent ? (
           <SelectedThread content={selectedContent} threadId={selectedThreadId!} />
         ) : (
-          <EmptyThreadState hasThreads={threads.length > 0} />
+          <EmptyThreadState hasThreads={threads.length > 0} gmailConnected={!!account} />
         )}
       </div>
     </div>
@@ -276,21 +276,23 @@ export default async function InboxPage({
 }
 
 /* ── Empty state ─────────────────────────────────────────────────────── */
-function EmptyThreadState({ hasThreads }: { hasThreads: boolean }) {
+function EmptyThreadState({ hasThreads, gmailConnected }: { hasThreads: boolean; gmailConnected: boolean }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
       <MessageSquare className="size-10 text-muted-foreground/30" strokeWidth={1.2} />
       <div>
         <p className="text-[15px] font-medium text-foreground/70">
-          {hasThreads ? "Select a thread" : "Your inbox is empty"}
+          {hasThreads ? "Select a thread" : gmailConnected ? "No emails yet" : "Your inbox is empty"}
         </p>
         <p className="text-[13px] text-muted-foreground mt-1">
           {hasThreads
             ? "Click any thread on the left to read and reply."
-            : "Connect Gmail in Settings to start syncing emails."}
+            : gmailConnected
+              ? "Emails will appear here once they sync."
+              : "Connect Gmail in Settings to start syncing emails."}
         </p>
       </div>
-      {!hasThreads && (
+      {!hasThreads && !gmailConnected && (
         <Link href="/settings/gmail" className={buttonVariants({ variant: "outline", size: "sm" })}>
           Connect Gmail
         </Link>

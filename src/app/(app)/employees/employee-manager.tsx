@@ -38,12 +38,14 @@ export function EmployeeManager({ users }: Props) {
   const [role, setRole] = useState("sales");
   const [error, setError] = useState<string | null>(null);
   const [createdInfo, setCreatedInfo] = useState<{ email: string; password: string } | null>(null);
+  const [adding, setAdding] = useState(false);
   const [changingRole, setChangingRole] = useState<string | null>(null);
   const [resettingPw, setResettingPw] = useState<string | null>(null);
 
   const handleAdd = () => {
     setError(null);
     setCreatedInfo(null);
+    setAdding(true);
     startTransition(async () => {
       try {
         const res = await fetch("/api/users", {
@@ -62,11 +64,14 @@ export function EmployeeManager({ users }: Props) {
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to add");
+      } finally {
+        setAdding(false);
       }
     });
   };
 
   const handleRemove = (removeEmail: string) => {
+    if (!window.confirm("Are you sure you want to remove this employee? This action cannot be undone.")) return;
     startTransition(async () => {
       try {
         const res = await fetch("/api/users", {
@@ -180,9 +185,9 @@ export function EmployeeManager({ users }: Props) {
             <Button
               size="sm"
               onClick={handleAdd}
-              disabled={isPending || !email.trim()}
+              disabled={adding || !email.trim()}
             >
-              {isPending ? "Adding\u2026" : "Add"}
+              {adding ? "Adding\u2026" : "Add"}
             </Button>
           </div>
           {error && <p className="text-[13px] text-destructive">{error}</p>}

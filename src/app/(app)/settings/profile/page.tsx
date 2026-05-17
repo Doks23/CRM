@@ -13,8 +13,8 @@ export default async function SettingsProfilePage() {
   return (
     <div className="space-y-4">
       <header>
-        <h1>Company &amp; voice</h1>
-        <p className="text-meta">
+        <h1 className="text-[22px] font-semibold -tracking-[0.01em]">Company &amp; voice</h1>
+        <p className="text-[14px] text-muted-foreground mt-1">
           Brand identity, FSSAI / GSTIN, and the voice file the AI uses on every
           draft.
         </p>

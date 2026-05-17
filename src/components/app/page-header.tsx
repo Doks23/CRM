@@ -53,7 +53,7 @@ export function PageHeader({
             <div className="text-eyebrow mb-1">{eyebrow}</div>
           ) : null}
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="truncate text-foreground">{title}</h1>
+            <h1 className="truncate text-foreground text-[22px] font-semibold -tracking-[0.01em]">{title}</h1>
             {badges ? (
               <div className="flex items-center gap-1.5">{badges}</div>
             ) : null}

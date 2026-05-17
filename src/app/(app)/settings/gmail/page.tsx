@@ -34,8 +34,8 @@ export default async function SettingsGmailPage({
   return (
     <div className="space-y-4">
       <header>
-        <h1>Gmail connection</h1>
-        <p className="text-meta">
+        <h1 className="text-[22px] font-semibold -tracking-[0.01em]">Gmail connection</h1>
+        <p className="text-[14px] text-muted-foreground mt-1">
           The shared inbox the CRM reads from and drafts back into.
         </p>
       </header>

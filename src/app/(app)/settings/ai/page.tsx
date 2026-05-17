@@ -17,8 +17,8 @@ export default async function SettingsAIPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1>AI providers</h1>
-        <p className="text-meta">
+        <h1 className="text-[22px] font-semibold -tracking-[0.01em]">AI providers</h1>
+        <p className="text-[14px] text-muted-foreground mt-1">
           Pick the model that classifies incoming email and the model that drafts
           replies. They can run on different providers.
         </p>

@@ -137,7 +137,7 @@ Rules:
 3. If asked for prices not in the catalog, do not guess — promise to revert.
 4. Keep replies focused: acknowledge → answer their specific ask → 1-2 next-step questions if needed → polite sign-off.
 5. Sign off as "Team ${profile.companyName}".
-6. Output ONLY the reply body. No subject line, no preamble like "Here is the reply:", no markdown.`;
+6. Output ONLY the reply body. No subject line, no preamble like "Here is the reply:", no markdown of any kind. Do not use asterisks, backticks, or any other markdown formatting characters — plain text only.`;
 }
 
 export function buildDraftUserPrompt(input: DraftInput): string {

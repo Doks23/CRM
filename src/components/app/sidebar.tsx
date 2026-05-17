@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -66,6 +67,7 @@ export function Sidebar({
   inboxCount = 0,
   pipelineCount = 0,
   logoUrl = null,
+  userAvatar = null,
 }: {
   userInitial?: string;
   userName?: string;
@@ -74,6 +76,7 @@ export function Sidebar({
   inboxCount?: number;
   pipelineCount?: number;
   logoUrl?: string | null;
+  userAvatar?: string | null;
 }) {
   const pathname = usePathname();
 
@@ -148,8 +151,18 @@ export function Sidebar({
       </nav>
 
       <div className="mx-3 mb-3 px-2 py-2.5 flex items-center gap-2.5 border-t border-sidebar-border pt-3">
-        <div className="size-8 rounded-lg bg-gradient-to-br from-[oklch(0.66_0.16_150)] to-[oklch(0.48_0.11_162)] text-white text-xs font-semibold grid place-items-center shrink-0">
-          {userInitial}
+        <div className="size-8 rounded-lg overflow-hidden bg-gradient-to-br from-[oklch(0.66_0.16_150)] to-[oklch(0.48_0.11_162)] text-white text-xs font-semibold grid place-items-center shrink-0">
+          {userAvatar ? (
+            <Image
+              src={userAvatar}
+              alt={userName}
+              fill
+              sizes="32px"
+              className="object-cover"
+            />
+          ) : (
+            userInitial
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[13.5px] font-medium leading-tight truncate">

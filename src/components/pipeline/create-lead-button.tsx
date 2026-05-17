@@ -34,6 +34,10 @@ export function CreateLeadButton() {
 
   const handleCreate = () => {
     setError(null);
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
     startTransition(async () => {
       try {
         const res = await fetch("/api/leads", {

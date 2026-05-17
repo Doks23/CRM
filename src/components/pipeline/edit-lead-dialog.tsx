@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,16 +19,31 @@ interface EditLeadDialogProps {
     contactName: string | null;
     company: string | null;
     primaryEmail: string;
+    phone: string | null;
+    notesForAi: string | null;
   };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function EditLeadDialog({ leadId, initial }: EditLeadDialogProps) {
+export function EditLeadDialog({ leadId, initial, open, onOpenChange }: EditLeadDialogProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial.contactName ?? "");
   const [company, setCompany] = useState(initial.company ?? "");
+  const [phone, setPhone] = useState(initial.phone ?? "");
+  const [notes, setNotes] = useState(initial.notesForAi ?? "");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setName(initial.contactName ?? "");
+      setCompany(initial.company ?? "");
+      setPhone(initial.phone ?? "");
+      setNotes(initial.notesForAi ?? "");
+      setError(null);
+    }
+  }, [open, initial.contactName, initial.company, initial.phone, initial.notesForAi]);
 
   const handleSave = () => {
     setError(null);
@@ -41,13 +55,15 @@ export function EditLeadDialog({ leadId, initial }: EditLeadDialogProps) {
           body: JSON.stringify({
             contactName: name || null,
             company: company || null,
+            phone: phone || null,
+            notesForAi: notes || null,
           }),
         });
         if (!res.ok) {
           const d = await res.json();
           throw new Error(d.error || "Save failed");
         }
-        setOpen(false);
+        onOpenChange(false);
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Save failed");
@@ -56,14 +72,7 @@ export function EditLeadDialog({ leadId, initial }: EditLeadDialogProps) {
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <button
-        onClick={() => setOpen(true)}
-        title="Edit contact details"
-        className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/8 transition-colors"
-      >
-        <Pencil className="size-3" />
-      </button>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[340px] sm:max-w-[340px]">
         <SheetHeader>
           <SheetTitle>Edit contact</SheetTitle>
@@ -94,6 +103,18 @@ export function EditLeadDialog({ leadId, initial }: EditLeadDialogProps) {
             />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="el-phone" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Phone
+            </Label>
+            <Input
+              id="el-phone"
+              placeholder="Phone number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="text-[14px]"
+            />
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="el-company" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
               Company
             </Label>
@@ -105,6 +126,19 @@ export function EditLeadDialog({ leadId, initial }: EditLeadDialogProps) {
               className="text-[14px]"
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="el-notes" className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Notes for AI
+            </Label>
+            <textarea
+              id="el-notes"
+              rows={4}
+              placeholder="Context the AI should know when drafting replies…"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-[14px] shadow-sm resize-none"
+            />
+          </div>
           {error && (
             <p className="text-[13px] text-destructive">{error}</p>
           )}
@@ -113,7 +147,7 @@ export function EditLeadDialog({ leadId, initial }: EditLeadDialogProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setOpen(false)}
+            onClick={() => onOpenChange(false)}
             disabled={isPending}
           >
             Cancel

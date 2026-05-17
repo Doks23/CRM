@@ -8,8 +8,8 @@ export default async function SettingsGreetingsPage() {
   return (
     <div className="space-y-4">
       <header>
-        <h1>Festive greetings</h1>
-        <p className="text-meta">
+        <h1 className="text-[22px] font-semibold -tracking-[0.01em]">Festive greetings</h1>
+        <p className="text-[14px] text-muted-foreground mt-1">
           On these dates the CRM auto-drafts a personalised greeting for every
           active lead. You review and send — same flow as a reply.
         </p>

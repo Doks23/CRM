@@ -25,6 +25,8 @@ interface LeadData {
   contactName: string | null;
   primaryEmail: string;
   company: string | null;
+  phone: string | null;
+  notesForAi: string | null;
   leadType: string;
   stage: string;
   score: number | null;
