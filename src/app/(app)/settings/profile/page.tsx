@@ -24,6 +24,7 @@ export default async function SettingsProfilePage() {
           pitchOneLiner: profile.pitchOneLiner,
           brandVoice: profile.brandVoice,
           inboxKeywords: profile.inboxKeywords ?? [],
+          logoUrl: profile.logoUrl,
         }}
       />
     </div>

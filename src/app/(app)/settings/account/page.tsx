@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { SmartAvatar } from "@/components/app/smart-avatar";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 
 export default function AccountPage() {
   const { data: session, update: updateSession } = useSession();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(session?.user?.name ?? "");
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(session?.user?.avatarUrl);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,17 +36,36 @@ export default function AccountPage() {
         const res = await fetch("/api/me", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({ name, avatarUrl }),
         });
         if (!res.ok) {
           const d = await res.json();
           throw new Error(d.error || "Save failed");
         }
-        await updateSession({ name });
+        await updateSession({ name, avatarUrl });
         setSaved(true);
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Save failed");
+      }
+    });
+  };
+
+  const handleAvatarChange = (url: string) => {
+    setAvatarUrl(url);
+    setSaved(false);
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatarUrl: url }),
+        });
+        if (!res.ok) throw new Error("Failed");
+        await updateSession({ avatarUrl: url });
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Upload failed");
       }
     });
   };
@@ -87,8 +107,13 @@ export default function AccountPage() {
 
       <Card className="p-5 gap-4">
         {/* Avatar */}
-        <div className="flex items-center gap-4">
-          <SmartAvatar name={user.name ?? user.email ?? "?"} size="xl" />
+        <div className="flex items-center gap-5">
+          <AvatarUpload
+            src={avatarUrl}
+            name={user.name ?? user.email ?? "?"}
+            size="xl"
+            onUpload={handleAvatarChange}
+          />
           <div>
             <div className="font-semibold text-[16px]">{user.name || "—"}</div>
             <div className="text-[13.5px] text-muted-foreground">{user.email}</div>

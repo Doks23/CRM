@@ -109,12 +109,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (email) {
         const dbUser = await db.query.users.findFirst({
           where: eq(users.email, email.toLowerCase()),
-          columns: { id: true, role: true, active: true },
+          columns: { id: true, role: true, active: true, avatarUrl: true },
         });
         if (dbUser) {
           token.userId = dbUser.id;
           token.role = dbUser.role;
           token.active = dbUser.active;
+          token.avatarUrl = dbUser.avatarUrl;
         }
 
         // Sync role from allowedEmails in case the user was created by the
@@ -137,6 +138,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role =
           (token.role as "owner" | "sales" | "production") ?? "sales";
         session.user.active = (token.active as boolean) ?? true;
+        session.user.avatarUrl = token.avatarUrl as string | null | undefined;
       }
       return session;
     },

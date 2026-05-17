@@ -6,6 +6,7 @@ import { Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 
 export interface BusinessProfileData {
   companyName: string | null;
@@ -16,6 +17,7 @@ export interface BusinessProfileData {
   pitchOneLiner: string | null;
   brandVoice: string | null;
   inboxKeywords: string[] | null;
+  logoUrl?: string | null;
 }
 
 /**
@@ -41,6 +43,7 @@ export function BusinessProfileForm({
     pitchOneLiner: initial?.pitchOneLiner ?? "",
     brandVoice: initial?.brandVoice ?? "",
     inboxKeywords: (initial?.inboxKeywords ?? ["makhana"]).join(", "),
+    logoUrl: initial?.logoUrl ?? null,
   });
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -78,6 +81,20 @@ export function BusinessProfileForm({
   return (
     <div className="space-y-5">
       <Section title="Company">
+        <div className="flex items-center gap-4 pb-3">
+          <AvatarUpload
+            src={form.logoUrl}
+            name={form.companyName || "Company"}
+            size="lg"
+            onUpload={(url) => {
+              setForm((f) => ({ ...f, logoUrl: url }));
+              setSaved(false);
+            }}
+          />
+          <div className="text-sm text-muted-foreground">
+            Upload your company logo. It will appear in the sidebar and on invoices.
+          </div>
+        </div>
         <Field
           label="Company name"
           value={form.companyName}

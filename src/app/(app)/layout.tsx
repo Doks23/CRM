@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { emailMessages, leads } from "@/db/schema";
+import { emailMessages, leads, businessProfile } from "@/db/schema";
 import { Sidebar } from "@/components/app/sidebar";
 import { Topbar } from "@/components/app/topbar";
 import { CreateLeadButton } from "@/components/pipeline/create-lead-button";
@@ -56,6 +56,10 @@ export default async function AppLayout({
     .filter((r) => !INACTIVE_STAGES.has(r.stage))
     .reduce((s, r) => s + r.count, 0);
 
+  const profile = await db.query.businessProfile.findFirst({
+    columns: { logoUrl: true },
+  });
+
   return (
     <Providers>
     <div className="flex min-h-screen bg-background">
@@ -66,6 +70,7 @@ export default async function AppLayout({
         userRole={session.user.role ?? "Owner"}
         inboxCount={inboxCount}
         pipelineCount={pipelineCount}
+        logoUrl={profile?.logoUrl ?? null}
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar newButton={<CreateLeadButton />} />

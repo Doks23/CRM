@@ -101,6 +101,7 @@ export const users = pgTable("user", {
   hash: text("hash"),
   role: userRoleEnum("role").notNull().default("sales"),
   active: boolean("active").notNull().default(true),
+  avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
 
@@ -391,6 +392,7 @@ export const businessProfile = pgTable("business_profile", {
     .notNull()
     .default("openai"),
   drafterModel: text("drafter_model").notNull().default("gemini-2.5-flash"),
+  logoUrl: text("logo_url"),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
 

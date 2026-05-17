@@ -29,6 +29,7 @@ export async function PATCH(req: NextRequest) {
     "gmailSyncEnabled",
     "pollIntervalMinutes",
     "festiveDates",
+    "logoUrl",
   ];
 
   const patch: Record<string, unknown> = {};
