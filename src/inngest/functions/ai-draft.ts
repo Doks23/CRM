@@ -74,6 +74,9 @@ export const aiDraftFn = inngest.createFunction(
     });
 
     if (!lead) throw new Error(`Lead ${message.leadId} not found`);
+    if (lead.deletedAt) {
+      return { skipped: true, reason: "lead deleted" };
+    }
 
     const classification = {
       category: (message.aiCategory ?? "relevant") as AiCategory,

@@ -1,4 +1,4 @@
-import { eq, sql, and, inArray, desc } from "drizzle-orm";
+import { eq, sql, and, inArray, isNull, desc } from "drizzle-orm";
 import { inngest } from "../client";
 import { db } from "@/db";
 import { leads, emailMessages, aiDrafts } from "@/db/schema";
@@ -24,6 +24,7 @@ export const followUpTick = inngest.createFunction(
 
       return db.query.leads.findMany({
         where: and(
+          isNull(leads.deletedAt),
           inArray(leads.stage, ["info_sent", "negotiation"]),
           sql`(${leads.stage} = 'info_sent' AND ${leads.lastActivityAt} < ${infoCutoff})
                OR (${leads.stage} = 'negotiation' AND ${leads.lastActivityAt} < ${negotCutoff})`,

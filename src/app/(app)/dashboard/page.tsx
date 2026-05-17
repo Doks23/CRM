@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   Sparkles,
   ChevronRight,
@@ -77,7 +77,7 @@ export default async function DashboardPage() {
     .from(aiDrafts)
     .innerJoin(leads, eq(aiDrafts.leadId, leads.id))
     .leftJoin(emailMessages, eq(emailMessages.id, aiDrafts.inReplyToMessageId))
-    .where(eq(aiDrafts.status, "pending"))
+    .where(and(eq(aiDrafts.status, "pending"), isNull(leads.deletedAt)))
     .orderBy(desc(leads.lastActivityAt))
     .limit(3);
 
@@ -88,6 +88,7 @@ export default async function DashboardPage() {
       count: sql<number>`count(*)`.mapWith(Number),
     })
     .from(leads)
+    .where(isNull(leads.deletedAt))
     .groupBy(leads.stage);
 
   const totalLeads = stageRows.reduce((s, r) => s + r.count, 0);

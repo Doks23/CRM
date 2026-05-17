@@ -72,3 +72,36 @@ export async function PATCH(
 
   return NextResponse.json(updated);
 }
+
+/**
+ * DELETE /api/leads/[id]
+ *
+ * Soft delete — sets deletedAt so the lead disappears from every list
+ * without touching its emails or drafts (kept for audit + thread integrity).
+ */
+export async function DELETE(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!["owner", "sales"].includes(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await ctx.params;
+
+  const [updated] = await db
+    .update(leads)
+    .set({ deletedAt: new Date() })
+    .where(eq(leads.id, id))
+    .returning({ id: leads.id });
+
+  if (!updated) {
+    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ status: "ok", id: updated.id });
+}

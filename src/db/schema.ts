@@ -226,12 +226,14 @@ export const leads = pgTable(
       .defaultNow(),
     /** Set by the repeat-order cron so we don't pester a lead daily. */
     lastReorderNudgeAt: timestamp("last_reorder_nudge_at", { mode: "date" }),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
     index("lead_last_activity_idx").on(t.lastActivityAt),
     index("lead_stage_idx").on(t.stage),
     index("lead_assigned_idx").on(t.assignedUserId),
+    index("lead_deleted_at_idx").on(t.deletedAt),
   ],
 );
 

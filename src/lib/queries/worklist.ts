@@ -41,22 +41,27 @@ export async function loadWorklist(): Promise<WorklistTile[]> {
   const cap = await getAiCostCapStatus();
 
   // ── 1. Needs reply ────────────────────────────────────────────────────
-  // Threads where latest message is inbound, not spam/newsletter, > 0min old.
+  // Threads where latest message is inbound, not spam/newsletter, lead not
+  // ignored or deleted.
   const [needsReplyRow] = await db
     .select({ n: sql<number>`count(*)`.mapWith(Number) })
     .from(
       sql`(
         select distinct on (${emailMessages.gmailThreadId})
           ${emailMessages.gmailThreadId},
+          ${emailMessages.leadId},
           ${emailMessages.direction},
           ${emailMessages.aiCategory}
         from ${emailMessages}
         order by ${emailMessages.gmailThreadId}, ${emailMessages.receivedAt} desc
       ) as latest`,
     )
+    .innerJoin(leads, sql`${leads.id} = latest.lead_id`)
     .where(
       sql`latest.direction = 'inbound'
-          and (latest.ai_category is null or latest.ai_category not in ('spam', 'newsletter'))`,
+          and (latest.ai_category is null or latest.ai_category not in ('spam', 'newsletter'))
+          and ${leads.deletedAt} is null
+          and ${leads.stage} <> 'ignored'`,
     );
   const needsReply = needsReplyRow?.n ?? 0;
 
@@ -64,7 +69,14 @@ export async function loadWorklist(): Promise<WorklistTile[]> {
   const [draftsPendingRow] = await db
     .select({ n: sql<number>`count(*)`.mapWith(Number) })
     .from(aiDrafts)
-    .where(eq(aiDrafts.status, "pending"));
+    .innerJoin(leads, eq(leads.id, aiDrafts.leadId))
+    .where(
+      and(
+        eq(aiDrafts.status, "pending"),
+        isNull(leads.deletedAt),
+        sql`${leads.stage} <> 'ignored'`,
+      ),
+    );
   const draftsPending = draftsPendingRow?.n ?? 0;
 
   // ── 3. Samples awaiting follow-up ────────────────────────────────────
@@ -91,6 +103,7 @@ export async function loadWorklist(): Promise<WorklistTile[]> {
       and(
         sql`${leads.stage} = 'dispatched'`,
         sql`${leads.lastActivityAt} < ${cutoff}`,
+        isNull(leads.deletedAt),
       ),
     );
   const reorderDue = reorderDueRow?.n ?? 0;

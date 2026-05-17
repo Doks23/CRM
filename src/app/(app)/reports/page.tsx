@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { CompanyLogo } from "@/components/app/smart-avatar";
 import { Sparkles, Download, Flame, ChevronRight } from "lucide-react";
 import { db } from "@/db";
 import { emailMessages, leads, aiDrafts, aiCalls } from "@/db/schema";
+import { PIPELINE_STAGES, normalizeStage } from "@/lib/pipeline-stages";
 import { getAiCostCapStatus } from "@/lib/ai";
 import { loadInboundTrend } from "@/lib/queries/worklist";
 
@@ -34,15 +35,11 @@ function relTime(date: Date | null) {
   return `${d}d`;
 }
 function stageLabel(stage: string) {
-  const MAP: Record<string, string> = {
-    new: "New",
-    info_sent: "Info Sent",
-    negotiation: "Negotiation",
-    po: "PO",
-    dispatched: "Dispatched",
-    ignored: "Ignored",
-  };
-  return MAP[stage] ?? stage;
+  const id = normalizeStage(stage);
+  const match = PIPELINE_STAGES.find((s) => s.id === id);
+  if (match) return match.label;
+  if (id === "ignored") return "Ignored";
+  return stage;
 }
 const SOURCE_LABELS: Record<string, string> = {
   linkedin: "LinkedIn",
@@ -94,6 +91,7 @@ export default async function ReportsPage() {
         count: sql<number>`count(*)`.mapWith(Number),
       })
       .from(leads)
+      .where(isNull(leads.deletedAt))
       .groupBy(leads.stage),
 
     db
@@ -112,6 +110,7 @@ export default async function ReportsPage() {
         count: sql<number>`count(*)`.mapWith(Number),
       })
       .from(leads)
+      .where(isNull(leads.deletedAt))
       .groupBy(leads.source),
 
     getAiCostCapStatus(),
@@ -159,6 +158,7 @@ export default async function ReportsPage() {
       })
       .from(leads)
       .leftJoin(emailMessages, eq(emailMessages.leadId, leads.id))
+      .where(isNull(leads.deletedAt))
       .groupBy(leads.id)
       .orderBy(desc(sql`count(${emailMessages.id})`))
       .limit(6),
@@ -171,53 +171,26 @@ export default async function ReportsPage() {
   const replyRate =
     totalInbound > 0 ? Math.round((totalOutbound / totalInbound) * 100) : 0;
 
-  const stageAlias: Record<string, string> = {
-    po_received: "po",
-    won: "dispatched",
-    lost: "ignored",
-    qualified: "info_sent",
-    needs_review: "new",
-    nurture: "ignored",
-  };
-  const byStageNorm: Record<string, number> = {};
+  // Normalize any legacy enum values onto the current pipeline ids so old
+  // rows aren't silently dropped from totals.
+  const byStage: Record<string, number> = {};
   for (const r of stageRows) {
-    const key = stageAlias[r.stage] ?? r.stage;
-    byStageNorm[key] = (byStageNorm[key] ?? 0) + r.count;
+    const key = normalizeStage(r.stage);
+    byStage[key] = (byStage[key] ?? 0) + r.count;
   }
-  const byStage = byStageNorm;
   const totalLeads = stageRows.reduce((s, r) => s + r.count, 0);
 
-  const FUNNEL_DEF = [
-    {
-      label: "All Leads",
-      stages: ["new", "info_sent", "negotiation", "po", "dispatched"],
-      color: "var(--stage-1)",
-    },
-    {
-      label: "Engaged",
-      stages: ["info_sent", "negotiation", "po", "dispatched"],
-      color: "var(--stage-2)",
-    },
-    {
-      label: "Qualified",
-      stages: ["info_sent", "negotiation", "po", "dispatched"],
-      color: "var(--stage-4)",
-    },
-    {
-      label: "Negotiation",
-      stages: ["negotiation", "po", "dispatched"],
-      color: "var(--stage-5)",
-    },
-    {
-      label: "Closed",
-      stages: ["dispatched"],
-      color: "var(--stage-2)",
-    },
-  ];
-  const funnel = FUNNEL_DEF.map((f) => ({
-    label: f.label,
-    value: f.stages.reduce((s, stage) => s + (byStage[stage] ?? 0), 0),
-    color: f.color,
+  // Funnel mirrors the pipeline board exactly: one row per stage, in order.
+  // Each row's value is the count of leads currently at that stage OR
+  // anywhere downstream of it — a true cumulative funnel.
+  const PIPELINE_IDS = PIPELINE_STAGES.map((s) => s.id);
+  const funnel = PIPELINE_STAGES.map((s, i) => ({
+    label: s.label,
+    value: PIPELINE_IDS.slice(i).reduce(
+      (sum, id) => sum + (byStage[id] ?? 0),
+      0,
+    ),
+    color: s.color,
   }));
   const conversionPct =
     funnel[0].value > 0
@@ -513,7 +486,7 @@ function FunnelCard({
             Conversion funnel
           </div>
           <div className="text-[13px] text-muted-foreground mt-0.5">
-            All leads → Closed ·{" "}
+            {funnel[0]?.label ?? ""} → {funnel[funnel.length - 1]?.label ?? ""} ·{" "}
             <strong className="text-foreground/85">{conversionPct}% conversion</strong>
           </div>
         </div>

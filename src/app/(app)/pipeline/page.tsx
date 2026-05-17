@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, isNull, sql } from "drizzle-orm";
 import {
   Filter,
   ArrowUpDown,
@@ -14,17 +14,12 @@ import { db } from "@/db";
 import { leads, emailMessages, users } from "@/db/schema";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import { CreateLeadButton } from "@/components/pipeline/create-lead-button";
+import { PIPELINE_STAGES } from "@/lib/pipeline-stages";
 
 export const dynamic = "force-dynamic";
 
-// Summary bar uses illustrative colours only — real counts come from the board.
-const STAGE_COLORS = [
-  { id: "new",         label: "New",         color: "var(--stage-1)" },
-  { id: "info_sent",   label: "Info Sent",   color: "var(--stage-4)" },
-  { id: "negotiation", label: "Negotiation", color: "var(--stage-5)" },
-  { id: "po",          label: "PO",          color: "var(--stage-6)" },
-  { id: "dispatched",  label: "Dispatched",  color: "var(--stage-2)" },
-];
+// Summary bar shares the canonical stage definition with the funnel.
+const STAGE_COLORS = PIPELINE_STAGES;
 
 export default async function PipelinePage() {
   const [session, leadsWithStats, allUsers] = await Promise.all([
@@ -51,6 +46,7 @@ export default async function PipelinePage() {
       })
       .from(leads)
       .leftJoin(emailMessages, eq(emailMessages.leadId, leads.id))
+      .where(isNull(leads.deletedAt))
       .groupBy(leads.id)
       .orderBy(desc(leads.lastActivityAt)),
     db.query.users.findMany({

@@ -10,6 +10,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   MessageSquare,
+  Archive,
 } from "lucide-react";
 
 import { db } from "@/db";
@@ -23,6 +24,7 @@ import { StageSelect } from "@/components/inbox/stage-select";
 import { CustomerLinkButton } from "@/components/inbox/customer-link-button";
 import { DraftPanel } from "@/components/inbox/draft-panel";
 import { InboxSearch } from "@/components/inbox/inbox-search";
+import { DeleteLeadButton } from "@/components/inbox/delete-lead-button";
 import {
   listInboxThreads,
   countInboxTabs,
@@ -152,9 +154,9 @@ export default async function InboxPage({
             href={q ? `/inbox?filter=all&q=${q}` : "/inbox?filter=all"}
           />
           <FolderItem
-            Icon={InboxIcon} label="Awaiting" count={counts.awaiting}
-            active={filter === "awaiting"}
-            href={q ? `/inbox?filter=awaiting&q=${q}` : "/inbox?filter=awaiting"}
+            Icon={Archive} label="Ignored" count={counts.ignored}
+            active={filter === "ignored"}
+            href={q ? `/inbox?filter=ignored&q=${q}` : "/inbox?filter=ignored"}
           />
         </FolderGroup>
 
@@ -197,7 +199,9 @@ export default async function InboxPage({
                   ? "No new mail"
                   : filter === "draft"
                     ? "No pending drafts"
-                    : "No emails synced yet"}
+                    : filter === "ignored"
+                      ? "No ignored leads"
+                      : "No emails synced yet"}
               </p>
             </div>
           ) : (
@@ -243,6 +247,11 @@ export default async function InboxPage({
                       <span className="inline-flex items-center gap-1 h-4 px-1 rounded bg-draft-tint text-draft-ink text-[10.5px] font-semibold">
                         <span className="size-1 rounded-full bg-primary" />
                         Draft ready
+                      </span>
+                    )}
+                    {filter === "ignored" && (
+                      <span className="ml-auto">
+                        <DeleteLeadButton leadId={t.leadId} leadCode={t.leadCode} />
                       </span>
                     )}
                   </div>

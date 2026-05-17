@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { sql } from "drizzle-orm";
+import { isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { emailMessages, leads } from "@/db/schema";
@@ -31,8 +31,9 @@ export default async function AppLayout({
     db
       .select({ n: sql<number>`count(distinct gmail_thread_id)`.mapWith(Number) })
       .from(emailMessages)
+      .innerJoin(leads, sql`${leads.id} = ${emailMessages.leadId}`)
       .where(
-        sql`(
+        sql`${leads.deletedAt} is null and (
           select m2.direction from email_message m2
           where m2.gmail_thread_id = ${emailMessages.gmailThreadId}
           order by m2.received_at desc limit 1
@@ -46,6 +47,7 @@ export default async function AppLayout({
     db
       .select({ stage: leads.stage, count: sql<number>`count(*)`.mapWith(Number) })
       .from(leads)
+      .where(isNull(leads.deletedAt))
       .groupBy(leads.stage),
   ]);
 

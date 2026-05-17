@@ -12,7 +12,7 @@ import { and, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { aiDrafts, emailMessages, leads } from "@/db/schema";
 
-export type InboxFilter = "all" | "new" | "draft" | "awaiting";
+export type InboxFilter = "all" | "new" | "draft" | "ignored";
 
 export interface InboxThreadRow {
   gmailThreadId: string;
@@ -56,9 +56,13 @@ export async function listInboxThreads({
 
   const conditions = [];
 
+  // Soft-deleted leads are never visible anywhere in the inbox.
+  conditions.push(sql`${leads.deletedAt} is null`);
+
   // Hide categories we never want to surface in the operator inbox.
+  // Parenthesized so the OR doesn't swallow sibling conditions added below.
   conditions.push(
-    sql`(
+    sql`((
       select m.ai_category from ${emailMessages} m
       where m.gmail_thread_id = ${emailMessages.gmailThreadId}
       order by m.received_at desc limit 1
@@ -66,8 +70,13 @@ export async function listInboxThreads({
       select m.ai_category from ${emailMessages} m
       where m.gmail_thread_id = ${emailMessages.gmailThreadId}
       order by m.received_at desc limit 1
-    ) not in ('spam', 'newsletter')`,
+    ) not in ('spam', 'newsletter'))`,
   );
+
+  // Ignored is its own tab — exclude it from every other view.
+  if (filter !== "ignored") {
+    conditions.push(sql`${leads.stage} <> 'ignored'`);
+  }
 
   if (q) {
     conditions.push(
@@ -85,7 +94,7 @@ export async function listInboxThreads({
   }
 
   if (filter === "new") {
-    // Latest message is inbound AND no draft exists yet.
+    // Latest message is inbound AND no unsent draft exists yet.
     conditions.push(
       sql`(
         select m.direction from ${emailMessages} m
@@ -97,6 +106,7 @@ export async function listInboxThreads({
         inner join ${emailMessages} m on m.id = d.in_reply_to_message_id
         where m.gmail_thread_id = ${emailMessages.gmailThreadId}
           and d.status in ('pending', 'approved', 'edited')
+          and d.sent_at is null
       )`,
     );
   }
@@ -108,18 +118,13 @@ export async function listInboxThreads({
         inner join ${emailMessages} m on m.id = d.in_reply_to_message_id
         where m.gmail_thread_id = ${emailMessages.gmailThreadId}
           and d.status in ('pending', 'approved', 'edited')
+          and d.sent_at is null
       )`,
     );
   }
 
-  if (filter === "awaiting") {
-    conditions.push(
-      sql`(
-        select m.direction from ${emailMessages} m
-        where m.gmail_thread_id = ${emailMessages.gmailThreadId}
-        order by m.received_at desc limit 1
-      ) = 'outbound'`,
-    );
+  if (filter === "ignored") {
+    conditions.push(sql`${leads.stage} = 'ignored'`);
   }
 
   const rows = await db
@@ -160,6 +165,7 @@ export async function listInboxThreads({
         inner join ${emailMessages} m on m.id = d.in_reply_to_message_id
         where m.gmail_thread_id = ${emailMessages.gmailThreadId}
           and d.status in ('pending', 'approved', 'edited')
+          and d.sent_at is null
         order by d.created_at desc limit 1
       )`,
       messageCount: sql<number>`count(*)`.mapWith(Number),
@@ -189,18 +195,18 @@ export async function countInboxTabs(query?: string | null): Promise<{
   all: number;
   new: number;
   draft: number;
-  awaiting: number;
+  ignored: number;
 }> {
-  const [all, newMails, drafts, awaiting] = await Promise.all([
+  const [all, newMails, drafts, ignored] = await Promise.all([
     listInboxThreads({ filter: "all", query, limit: 1000 }),
     listInboxThreads({ filter: "new", query, limit: 1000 }),
     listInboxThreads({ filter: "draft", query, limit: 1000 }),
-    listInboxThreads({ filter: "awaiting", query, limit: 1000 }),
+    listInboxThreads({ filter: "ignored", query, limit: 1000 }),
   ]);
   return {
     all: all.length,
     new: newMails.length,
     draft: drafts.length,
-    awaiting: awaiting.length,
+    ignored: ignored.length,
   };
 }

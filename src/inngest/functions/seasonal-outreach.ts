@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { NonRetriableError } from "inngest";
 
 import { inngest } from "../client";
@@ -74,7 +74,7 @@ export const seasonalOutreach = inngest.createFunction(
 
     const targetLeads = await step.run("find-leads", async () => {
       return db.query.leads.findMany({
-        where: inArray(leads.stage, stages),
+        where: and(isNull(leads.deletedAt), inArray(leads.stage, stages)),
       });
     });
 
