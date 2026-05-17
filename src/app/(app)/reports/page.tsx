@@ -1,7 +1,8 @@
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sparkline } from "@/components/app/sparkline";
 import { Donut } from "@/components/app/donut";
@@ -56,11 +57,70 @@ const SOURCE_COLORS = [
   "var(--stage-1)",
 ];
 
+// ── range selector ──────────────────────────────────────────────────────────
+
+const RANGE_OPTIONS = ["24h", "7d", "14d", "30d", "QTD"] as const;
+type RangeKey = (typeof RANGE_OPTIONS)[number];
+
+function resolveRange(raw: string | undefined): {
+  key: RangeKey;
+  label: string;
+  days: number;
+  since: Date;
+} {
+  const key: RangeKey = (RANGE_OPTIONS as readonly string[]).includes(raw ?? "")
+    ? (raw as RangeKey)
+    : "14d";
+  const since = new Date();
+  since.setHours(0, 0, 0, 0);
+  let days: number;
+  let label: string;
+  switch (key) {
+    case "24h":
+      // Today only — start of today through now.
+      days = 1;
+      label = "today";
+      break;
+    case "7d":
+      days = 7;
+      since.setDate(since.getDate() - 6);
+      label = "last 7 days";
+      break;
+    case "30d":
+      days = 30;
+      since.setDate(since.getDate() - 29);
+      label = "last 30 days";
+      break;
+    case "QTD": {
+      const now = new Date();
+      const qStartMonth = Math.floor(now.getMonth() / 3) * 3;
+      since.setMonth(qStartMonth, 1);
+      const ms = Date.now() - since.getTime();
+      days = Math.max(1, Math.floor(ms / 86_400_000) + 1);
+      label = "quarter to date";
+      break;
+    }
+    case "14d":
+    default:
+      days = 14;
+      since.setDate(since.getDate() - 13);
+      label = "last 14 days";
+      break;
+  }
+  return { key, label, days, since };
+}
+
 // ── page ────────────────────────────────────────────────────────────────────
 
-export default async function ReportsPage() {
-  const since14d = new Date(Date.now() - 14 * 86_400_000);
-  since14d.setHours(0, 0, 0, 0);
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range: rangeParam } = await searchParams;
+  const range = resolveRange(rangeParam);
+  const sinceDate = range.since;
+  const windowDays = range.days;
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
@@ -83,7 +143,7 @@ export default async function ReportsPage() {
       })
       .from(emailMessages),
 
-    loadInboundTrend(14),
+    loadInboundTrend(windowDays),
 
     db
       .select({
@@ -130,7 +190,7 @@ export default async function ReportsPage() {
         cost: sql<string>`coalesce(sum(${aiCalls.costInr}) filter (where ${aiCalls.status} = 'ok'), 0)`,
       })
       .from(aiCalls)
-      .where(gte(aiCalls.createdAt, since14d))
+      .where(gte(aiCalls.createdAt, sinceDate))
       .groupBy(sql`date_trunc('day', ${aiCalls.createdAt})`),
 
     db
@@ -142,7 +202,7 @@ export default async function ReportsPage() {
       .where(
         and(
           eq(emailMessages.direction, "outbound"),
-          gte(emailMessages.receivedAt, since14d),
+          gte(emailMessages.receivedAt, sinceDate),
         ),
       )
       .groupBy(sql`date_trunc('day', ${emailMessages.receivedAt})`),
@@ -226,8 +286,8 @@ export default async function ReportsPage() {
   const aiDailyCostMap = Object.fromEntries(
     aiDailyRows.map((r) => [r.day, parseFloat(r.cost)]),
   );
-  const aiDailyCosts = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(since14d.getTime() + i * 86_400_000);
+  const aiDailyCosts = Array.from({ length: windowDays }, (_, i) => {
+    const d = new Date(sinceDate.getTime() + i * 86_400_000);
     const key = d.toISOString().slice(0, 10);
     return aiDailyCostMap[key] ?? 0;
   });
@@ -238,21 +298,24 @@ export default async function ReportsPage() {
   const inboundDaily = trend14d.map(
     (d) => d.relevant + d.cold + d.other,
   );
-  const outboundDaily = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(since14d.getTime() + i * 86_400_000);
+  const outboundDaily = Array.from({ length: windowDays }, (_, i) => {
+    const d = new Date(sinceDate.getTime() + i * 86_400_000);
     const key = d.toISOString().slice(0, 10);
     return outboundDailyMap[key] ?? 0;
   });
 
-  const inboundTotal14d = inboundDaily.reduce((s, n) => s + n, 0);
-  const outboundTotal14d = outboundDaily.reduce((s, n) => s + n, 0);
-  const replyRate14d =
-    inboundTotal14d > 0
-      ? Math.round((outboundTotal14d / inboundTotal14d) * 100)
+  const inboundTotalWindow = inboundDaily.reduce((s, n) => s + n, 0);
+  const outboundTotalWindow = outboundDaily.reduce((s, n) => s + n, 0);
+  const replyRateWindow =
+    inboundTotalWindow > 0
+      ? Math.round((outboundTotalWindow / inboundTotalWindow) * 100)
       : 0;
 
-  const inboundHalf1 = inboundDaily.slice(0, 7).reduce((s, n) => s + n, 0);
-  const inboundHalf2 = inboundDaily.slice(7).reduce((s, n) => s + n, 0);
+  // Split the window in half for trend deltas. For very short windows the
+  // half-vs-half comparison is noisy but still works.
+  const halfPoint = Math.max(1, Math.floor(windowDays / 2));
+  const inboundHalf1 = inboundDaily.slice(0, halfPoint).reduce((s, n) => s + n, 0);
+  const inboundHalf2 = inboundDaily.slice(halfPoint).reduce((s, n) => s + n, 0);
   const inboundDelta =
     inboundHalf1 > 0
       ? Math.round(((inboundHalf2 - inboundHalf1) / inboundHalf1) * 100)
@@ -281,7 +344,7 @@ export default async function ReportsPage() {
           .where(
             and(
               inArray(emailMessages.leadId, topLeadIds as [string, ...string[]]),
-              gte(emailMessages.receivedAt, since14d),
+              gte(emailMessages.receivedAt, sinceDate),
             ),
           )
           .groupBy(
@@ -292,13 +355,13 @@ export default async function ReportsPage() {
 
   const trendByLead = new Map<string, number[]>();
   for (const id of topLeadIds) {
-    trendByLead.set(id, Array(14).fill(0));
+    trendByLead.set(id, Array(windowDays).fill(0));
   }
   for (const r of leadTrendRows) {
     const arr = trendByLead.get(r.leadId ?? "");
     if (!arr) continue;
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(since14d.getTime() + i * 86_400_000);
+    for (let i = 0; i < windowDays; i++) {
+      const d = new Date(sinceDate.getTime() + i * 86_400_000);
       if (d.toISOString().slice(0, 10) === r.day) {
         arr[i] = r.count;
       }
@@ -307,15 +370,15 @@ export default async function ReportsPage() {
 
   const topLeads = topLeadsRaw.map((l) => ({
     ...l,
-    trend: trendByLead.get(l.id) ?? Array(14).fill(0),
+    trend: trendByLead.get(l.id) ?? Array(windowDays).fill(0),
   }));
 
   return (
     <div className="p-6 lg:p-8 space-y-4">
-      <ReportsHero />
+      <ReportsHero range={range.key} label={range.label} />
       <BigStats
         totalInbound={totalInbound}
-        replyRate={replyRate14d}
+        replyRate={replyRateWindow}
         draftTotal={ds.total}
         todayCost={todayCost}
         inboundDelta={inboundDelta}
@@ -330,9 +393,11 @@ export default async function ReportsPage() {
         <InboxHealth
           inboundDaily={inboundDaily}
           outboundDaily={outboundDaily}
-          totalInbound={inboundTotal14d}
-          totalOutbound={outboundTotal14d}
-          replyRate={replyRate14d}
+          totalInbound={inboundTotalWindow}
+          totalOutbound={outboundTotalWindow}
+          replyRate={replyRateWindow}
+          windowDays={windowDays}
+          rangeLabel={range.label}
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
@@ -353,14 +418,14 @@ export default async function ReportsPage() {
           total={ds.total}
         />
       </div>
-      <Leaderboard topLeads={topLeads} />
+      <Leaderboard topLeads={topLeads} rangeKey={range.key} />
     </div>
   );
 }
 
 // ── sub-components ───────────────────────────────────────────────────────────
 
-function ReportsHero() {
+function ReportsHero({ range, label }: { range: RangeKey; label: string }) {
   return (
     <div className="flex items-baseline justify-between flex-wrap gap-3">
       <div>
@@ -369,27 +434,32 @@ function ReportsHero() {
         </h1>
         <div className="text-[14px] text-muted-foreground mt-1">
           Inbox health, lead funnel, AI quality and cost ·{" "}
-          <em className="serif italic text-foreground">last 14 days</em>
+          <em className="serif italic text-foreground">{label}</em>
         </div>
       </div>
       <div className="flex items-center gap-2">
         <div className="inline-flex items-center bg-card border border-border rounded-lg p-0.5">
-          {["24h", "7d", "14d", "30d", "QTD"].map((r) => (
-            <button
+          {RANGE_OPTIONS.map((r) => (
+            <Link
               key={r}
-              className={`h-7 px-3 text-[13px] rounded-md font-medium ${
-                r === "14d"
+              href={`/reports?range=${r}`}
+              scroll={false}
+              className={`h-7 px-3 text-[13px] rounded-md font-medium inline-flex items-center ${
+                r === range
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-foreground/5"
               }`}
             >
               {r}
-            </button>
+            </Link>
           ))}
         </div>
-        <Button variant="outline" size="sm">
+        <a
+          href={`/api/reports/export?range=${range}`}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
           <Download className="size-3.5" /> Export CSV
-        </Button>
+        </a>
       </div>
     </div>
   );
@@ -552,16 +622,20 @@ function InboxHealth({
   totalInbound,
   totalOutbound,
   replyRate,
+  windowDays,
+  rangeLabel,
 }: {
   inboundDaily: number[];
   outboundDaily: number[];
   totalInbound: number;
   totalOutbound: number;
   replyRate: number;
+  windowDays: number;
+  rangeLabel: string;
 }) {
   const max = Math.max(...inboundDaily, 1);
   const labels = inboundDaily.map((_, i) => {
-    const d = new Date(Date.now() - (13 - i) * 86_400_000);
+    const d = new Date(Date.now() - (windowDays - 1 - i) * 86_400_000);
     return d.getDate();
   });
   return (
@@ -572,7 +646,7 @@ function InboxHealth({
             Inbox health
           </div>
           <div className="text-[13px] text-muted-foreground mt-0.5">
-            Inbound · Replies sent · per day · last 14 days
+            Inbound · Replies sent · per day · {rangeLabel}
           </div>
         </div>
         <div className="flex gap-3 text-[12px] text-muted-foreground">
@@ -802,6 +876,7 @@ function DraftQuality({
 
 function Leaderboard({
   topLeads,
+  rangeKey,
 }: {
   topLeads: Array<{
     id: string;
@@ -812,6 +887,7 @@ function Leaderboard({
     messageCount: number;
     trend: number[];
   }>;
+  rangeKey: RangeKey;
 }) {
   return (
     <Card className="p-0 gap-0">
@@ -831,7 +907,7 @@ function Leaderboard({
         <div>Stage</div>
         <div>Messages</div>
         <div>Last touch</div>
-        <div>14d trend</div>
+        <div>{rangeKey} trend</div>
         <div />
       </div>
       {topLeads.length === 0 ? (
