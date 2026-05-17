@@ -2,18 +2,20 @@
 
 import { Menu, Search, Bell, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UserMenu } from "@/components/app/user-menu";
 import { useSidebar } from "@/components/providers";
 
 /**
  * Sticky app topbar with hamburger + search + sync status + new action + user menu.
+ * `userMenu` must be passed as a prop from a server component (it's an async server component).
  */
 export function Topbar({
   syncedLabel = "Gmail · synced 2m ago",
   newButton,
+  userMenu,
 }: {
   syncedLabel?: string;
   newButton?: React.ReactNode;
+  userMenu?: React.ReactNode;
 }) {
   const { toggle } = useSidebar();
 
@@ -70,7 +72,7 @@ export function Topbar({
           )}
         </div>
 
-        <UserMenu />
+        {userMenu}
       </div>
     </header>
   );

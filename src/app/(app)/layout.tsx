@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { emailMessages, leads, businessProfile } from "@/db/schema";
 import { Sidebar } from "@/components/app/sidebar";
 import { Topbar } from "@/components/app/topbar";
+import { UserMenu } from "@/components/app/user-menu";
 import { CreateLeadButton } from "@/components/pipeline/create-lead-button";
 import { Providers } from "@/components/providers";
 
@@ -74,7 +75,7 @@ export default async function AppLayout({
         userAvatar={session.user.avatarUrl ?? session.user.image ?? null}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar newButton={<CreateLeadButton />} />
+        <Topbar newButton={<CreateLeadButton />} userMenu={<UserMenu />} />
         <main className="flex-1 overflow-auto pb-[60px] lg:pb-0">{children}</main>
       </div>
     </div>
