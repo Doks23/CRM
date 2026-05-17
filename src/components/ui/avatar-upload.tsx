@@ -14,10 +14,10 @@ interface AvatarUploadProps {
 }
 
 const sizeClasses = {
-  sm: "size-10 text-sm",
-  md: "size-14 text-xl",
-  lg: "size-20 text-3xl",
-  xl: "size-28 text-4xl",
+  sm: "size-12 text-sm",
+  md: "size-16 text-xl",
+  lg: "size-24 text-3xl",
+  xl: "size-36 text-4xl",
 };
 
 export function AvatarUpload({
