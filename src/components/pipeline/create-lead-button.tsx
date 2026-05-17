@@ -74,7 +74,7 @@ export function CreateLeadButton() {
           if (!v) reset();
         }}
       >
-        <SheetContent side="right" className="w-[380px] sm:max-w-[380px]">
+        <SheetContent side="right" className="w-full sm:w-[380px] sm:max-w-[380px]">
           <SheetHeader>
             <SheetTitle>Create new deal</SheetTitle>
           </SheetHeader>

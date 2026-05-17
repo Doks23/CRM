@@ -202,73 +202,75 @@ export function EmployeeManager({ users }: Props) {
             Team members ({employees.length})
           </h2>
           <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-[14px]">
-              <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Name</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Email</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Role</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Created</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((u) => (
-                  <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <SmartAvatar name={u.name ?? u.email} size="sm" />
-                        <span className="font-medium truncate">{u.name || "\u2014"}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{u.email}</td>
-                    <td className="px-4 py-2.5">
-                      <select
-                        value={u.role}
-                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                        disabled={changingRole === u.id}
-                        className="flex h-8 rounded-md border border-input bg-transparent px-2 py-1 text-[13px] shadow-sm"
-                      >
-                        {ROLE_OPTIONS.map((r) => (
-                          <option key={r.value} value={r.value}>{r.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground text-[13px]">
-                      {new Date(u.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={resettingPw === u.id}
-                          onClick={() => handleResetPassword(u.id)}
-                          title="Reset password to Temp@123"
-                        >
-                          <KeyRound className="size-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive"
-                          onClick={() => handleRemove(u.email)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[14px] min-w-[500px]">
+                <thead>
+                  <tr className="bg-muted/50 border-b border-border">
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Name</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Email</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Role</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide hidden sm:table-cell">Created</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Actions</th>
                   </tr>
-                ))}
-                {employees.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-[14px]">
-                      No team members yet. Add one above.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {employees.map((u) => (
+                    <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <SmartAvatar name={u.name ?? u.email} size="sm" />
+                          <span className="font-medium truncate">{u.name || "\u2014"}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{u.email}</td>
+                      <td className="px-4 py-2.5">
+                        <select
+                          value={u.role}
+                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                          disabled={changingRole === u.id}
+                          className="flex h-8 rounded-md border border-input bg-transparent px-2 py-1 text-[13px] shadow-sm"
+                        >
+                          {ROLE_OPTIONS.map((r) => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground text-[13px] hidden sm:table-cell">
+                        {new Date(u.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={resettingPw === u.id}
+                            onClick={() => handleResetPassword(u.id)}
+                            title="Reset password to Temp@123"
+                          >
+                            <KeyRound className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive"
+                            onClick={() => handleRemove(u.email)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {employees.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-[14px]">
+                        No team members yet. Add one above.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -278,34 +280,34 @@ export function EmployeeManager({ users }: Props) {
             Owner ({owners.length})
           </h2>
           <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-[14px]">
-              <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Name</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Email</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Role</th>
-                </tr>
-              </thead>
-              <tbody>
-                {owners.map((u) => (
-                  <tr key={u.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <SmartAvatar name={u.name ?? u.email} size="sm" />
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{u.name || u.email}</span>
-                          <ShieldCheck className="size-3.5 text-pos shrink-0" />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{u.email}</td>
-                    <td className="px-4 py-2.5">
-                      <Badge variant="outline" className="text-[11px] capitalize">owner</Badge>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[14px] min-w-[400px]">
+                <thead>
+                  <tr className="bg-muted/50 border-b border-border">
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Name</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Email</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-[12px] uppercase tracking-wide">Role</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {owners.map((u) => (
+                    <tr key={u.id} className="hover:bg-muted/30">
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <SmartAvatar name={u.name ?? u.email} size="sm" />
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{u.name || u.email}</span>
+                            <ShieldCheck className="size-3.5 text-pos shrink-0" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{u.email}</td>
+                      <td className="px-4 py-2.5 capitalize text-muted-foreground">{u.role}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       </div>

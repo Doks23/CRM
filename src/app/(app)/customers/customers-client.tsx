@@ -144,43 +144,46 @@ export function CustomersClient({
             </p>
           </div>
         ) : (
-          <table className="w-full text-[14px]">
-            <thead>
-              <tr className="border-b border-border text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                <th className="text-left px-6 py-3 font-medium">Code</th>
-                <th className="text-left px-4 py-3 font-medium">Name</th>
-                <th className="text-left px-4 py-3 font-medium">Company</th>
-                <th className="text-left px-4 py-3 font-medium">Email</th>
-                <th className="text-left px-4 py-3 font-medium">Phone</th>
-                <th className="text-left px-4 py-3 font-medium">GSTIN</th>
-                <th className="text-left px-4 py-3 font-medium">Address</th>
-                <th className="w-12 px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className="border-b border-border/60 hover:bg-foreground/[0.02]">
-                  <td className="px-6 py-3 font-mono text-[12px] text-muted-foreground whitespace-nowrap">{c.customerCode}</td>
-                  <td className="px-4 py-3 font-medium whitespace-nowrap">{c.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{c.company ?? "-"}</td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{c.email ?? "-"}</td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{c.phone ?? "-"}</td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap font-mono text-[12px]">{c.gstin ?? "-"}</td>
-                  <td className="px-4 py-3 text-muted-foreground truncate max-w-[200px]">{c.address ?? "-"}</td>
-                  <td className="px-4 py-3">
-                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)}>
-                      <Pencil className="size-3.5" />
-                    </Button>
-                  </td>
+          /// Scrollable table wrapper for mobile
+          <div className="overflow-x-auto">
+            <table className="w-full text-[14px] min-w-[600px]">
+              <thead>
+                <tr className="border-b border-border text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="text-left px-4 lg:px-6 py-3 font-medium">Code</th>
+                  <th className="text-left px-3 lg:px-4 py-3 font-medium">Name</th>
+                  <th className="text-left px-3 lg:px-4 py-3 font-medium hidden sm:table-cell">Company</th>
+                  <th className="text-left px-3 lg:px-4 py-3 font-medium hidden md:table-cell">Email</th>
+                  <th className="text-left px-3 lg:px-4 py-3 font-medium hidden md:table-cell">Phone</th>
+                  <th className="text-left px-3 lg:px-4 py-3 font-medium hidden lg:table-cell">GSTIN</th>
+                  <th className="text-left px-3 lg:px-4 py-3 font-medium hidden lg:table-cell">Address</th>
+                  <th className="w-12 px-3 lg:px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((c) => (
+                  <tr key={c.id} className="border-b border-border/60 hover:bg-foreground/[0.02]">
+                    <td className="px-4 lg:px-6 py-3 font-mono text-[12px] text-muted-foreground whitespace-nowrap">{c.customerCode}</td>
+                    <td className="px-3 lg:px-4 py-3 font-medium whitespace-nowrap">{c.name}</td>
+                    <td className="px-3 lg:px-4 py-3 text-muted-foreground whitespace-nowrap hidden sm:table-cell">{c.company ?? "-"}</td>
+                    <td className="px-3 lg:px-4 py-3 text-muted-foreground whitespace-nowrap hidden md:table-cell">{c.email ?? "-"}</td>
+                    <td className="px-3 lg:px-4 py-3 text-muted-foreground whitespace-nowrap hidden md:table-cell">{c.phone ?? "-"}</td>
+                    <td className="px-3 lg:px-4 py-3 text-muted-foreground whitespace-nowrap font-mono text-[12px] hidden lg:table-cell">{c.gstin ?? "-"}</td>
+                    <td className="px-3 lg:px-4 py-3 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">{c.address ?? "-"}</td>
+                    <td className="px-3 lg:px-4 py-3">
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)}>
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-        <SheetContent side="right" className="w-[420px] sm:max-w-[420px]">
+        <SheetContent side="right" className="w-full sm:w-[420px] sm:max-w-[420px]">
           <SheetHeader>
             <SheetTitle>{editing ? "Edit customer" : "Add customer"}</SheetTitle>
           </SheetHeader>

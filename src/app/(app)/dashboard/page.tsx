@@ -139,27 +139,28 @@ export default async function DashboardPage() {
   return (
     <div className="p-6 lg:p-8 space-y-5">
       {/* Hero */}
-      <div className="flex items-center justify-between gap-6 flex-wrap">
-        <div className="flex items-baseline gap-3.5 flex-wrap">
-          <h1 className="serif text-[32px] font-normal leading-[1.1] -tracking-[0.015em]">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex flex-col gap-1">
+          <h1 className="serif text-[24px] sm:text-[32px] font-normal leading-[1.1] -tracking-[0.015em]">
             {greeting}, {firstName}.
           </h1>
-          <span className="text-[15px] text-muted-foreground">
-            <em className="serif italic text-foreground text-[16.5px]">
+          <span className="text-[13px] sm:text-[15px] text-muted-foreground">
+            <em className="serif italic text-foreground text-[14px] sm:text-[16.5px]">
               {needsReply === 0 ? "No threads" : needsReply === 1 ? "One thread" : `${needsReply} threads`}
             </em>{" "}
-            unread · {activePipelineLeads} active in pipeline
+            unread · {activePipelineLeads} active
           </span>
         </div>
-        <div className="flex items-center gap-2.5">
-          <Badge variant="outline" className="bg-card">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-card text-[11px] sm:text-[13px]">
             <span className="inline-block size-1.5 rounded-full bg-warn" />
-            {dateLabel}
+            <span className="hidden sm:inline">{dateLabel}</span>
+            <span className="sm:hidden">{new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
           </Badge>
-          <div className="w-px h-[18px] bg-border" />
+          <div className="w-px h-[18px] bg-border hidden sm:block" />
           <ReSyncButton />
           <Link href="/reports" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            <Download className="size-3.5" /> Reports
+            <Download className="size-3.5" /> <span className="hidden sm:inline">Reports</span>
           </Link>
         </div>
       </div>
@@ -268,7 +269,7 @@ export default async function DashboardPage() {
                   return (
                     <div
                       key={r.draftId}
-                      className="grid grid-cols-[44px_1fr_auto] gap-3.5 px-5 py-3.5 [&:not(:last-child)]:border-b border-border"
+                      className="flex gap-3.5 px-4 lg:px-5 py-3.5 [&:not(:last-child)]:border-b border-border"
                     >
                       <SmartAvatar name={r.contactName ?? r.leadId} size="lg" />
                       <div className="min-w-0">
@@ -299,8 +300,8 @@ export default async function DashboardPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex flex-col items-end gap-1.5">
-                        <span className="text-[12px] text-muted-foreground tabular">
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className="text-[11px] sm:text-[12px] text-muted-foreground tabular whitespace-nowrap">
                           {ageLabel} · <StagePill label={r.stage} className="text-[11px]" dotSize={5} />
                         </span>
                         <div className="flex gap-1.5">
@@ -310,13 +311,13 @@ export default async function DashboardPage() {
                                 href={`/inbox/${r.gmailThreadId}`}
                                 className={buttonVariants({ variant: "ghost", size: "xs" })}
                               >
-                                <Pencil className="size-3" /> Edit
+                                <Pencil className="size-3" /> <span className="hidden sm:inline">Edit</span>
                               </Link>
                               <Link
                                 href={`/inbox/${r.gmailThreadId}`}
-                                className={buttonVariants({ size: "xs", className: "bg-primary text-primary-foreground hover:bg-primary/90 px-3" })}
+                                className={buttonVariants({ size: "xs", className: "bg-primary text-primary-foreground hover:bg-primary/90 px-2 sm:px-3" })}
                               >
-                                <Send className="size-3" strokeWidth={2} /> Approve &amp; send
+                                <Send className="size-3" strokeWidth={2} /> <span className="hidden sm:inline">Approve &amp; send</span>
                               </Link>
                             </>
                           )}

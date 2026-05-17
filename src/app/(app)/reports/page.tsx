@@ -475,24 +475,24 @@ export default async function ReportsPage({
 
 function ReportsHero({ range, label }: { range: RangeKey; label: string }) {
   return (
-    <div className="flex items-baseline justify-between flex-wrap gap-3">
+    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3">
       <div>
-        <h1 className="serif text-[30px] leading-tight -tracking-[0.015em]">
+        <h1 className="serif text-[24px] sm:text-[30px] leading-tight -tracking-[0.015em]">
           Reports
         </h1>
-        <div className="text-[14px] text-muted-foreground mt-1">
+        <div className="text-[13px] sm:text-[14px] text-muted-foreground mt-1">
           Inbox health, lead funnel, AI quality and cost ·{" "}
           <em className="serif italic text-foreground">{label}</em>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <div className="inline-flex items-center bg-card border border-border rounded-lg p-0.5">
+        <div className="inline-flex items-center bg-card border border-border rounded-lg p-0.5 overflow-x-auto no-scrollbar">
           {RANGE_OPTIONS.map((r) => (
             <Link
               key={r}
               href={`/reports?range=${r}`}
               scroll={false}
-              className={`h-7 px-3 text-[13px] rounded-md font-medium inline-flex items-center ${
+              className={`h-7 px-2 sm:px-3 text-[12px] sm:text-[13px] rounded-md font-medium inline-flex items-center shrink-0 ${
                 r === range
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-foreground/5"

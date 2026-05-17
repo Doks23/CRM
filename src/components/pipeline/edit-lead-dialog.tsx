@@ -73,7 +73,7 @@ export function EditLeadDialog({ leadId, initial, open, onOpenChange }: EditLead
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[340px] sm:max-w-[340px]">
+      <SheetContent side="right" className="w-full sm:w-[340px] sm:max-w-[340px]">
         <SheetHeader>
           <SheetTitle>Edit contact</SheetTitle>
         </SheetHeader>

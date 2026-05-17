@@ -75,7 +75,7 @@ export default async function AppLayout({
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar newButton={<CreateLeadButton />} />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto pb-[60px] lg:pb-0">{children}</main>
       </div>
     </div>
     </Providers>

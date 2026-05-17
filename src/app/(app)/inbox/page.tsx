@@ -11,12 +11,14 @@ import {
   ArrowUpRight,
   MessageSquare,
   Archive,
+  ArrowLeft,
 } from "lucide-react";
 
 import { db } from "@/db";
 import { aiDrafts, emailMessages, gmailAccount, leads, customers } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { SmartAvatar } from "@/components/app/smart-avatar";
 import { StagePill, StageDot } from "@/components/app/stage-pill";
@@ -122,8 +124,8 @@ export default async function InboxPage({
 
   return (
     <div className="flex h-[calc(100vh-60px)] min-h-0">
-      {/* ── Folders rail ──────────────────────────────────────────────── */}
-      <div className="w-[220px] shrink-0 border-r border-border bg-background overflow-y-auto px-3.5 py-4 space-y-5">
+      {/* ── Folders rail — hidden on mobile ────────────────────────────── */}
+      <div className="hidden lg:flex w-[220px] shrink-0 border-r border-border bg-background overflow-y-auto px-3.5 py-4 space-y-5 flex-col">
         <div>
           <div className="serif text-[26px] leading-tight">Inbox</div>
           <SyncStatus email={account?.email ?? null} lastPolledAt={account?.lastPolledAt ?? null} />
@@ -172,13 +174,51 @@ export default async function InboxPage({
         </FolderGroup>
       </div>
 
-      {/* ── Thread list ───────────────────────────────────────────────── */}
-      <div className="w-[360px] shrink-0 border-r border-border bg-card flex flex-col min-h-0">
+      {/* ── Thread list — full width on mobile when no thread selected, 360px on desktop ── */}
+      <div className={cn(
+        "flex flex-col min-h-0 bg-card border-r border-border",
+        "lg:w-[360px] lg:shrink-0",
+        selectedThreadId ? "hidden lg:flex" : "flex-1 lg:flex-initial"
+      )}>
         <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
           <span className="text-[13px] font-medium text-muted-foreground shrink-0">
             {threads.length} thread{threads.length !== 1 ? "s" : ""}
           </span>
           <InboxSearch initialQuery={q ?? ""} />
+        </div>
+
+        {/* Mobile filter tabs */}
+        <div className="lg:hidden flex gap-1 px-3 py-2 border-b border-border overflow-x-auto no-scrollbar">
+          {[
+            { label: "New Mail", key: "new", count: counts.new, icon: Mail, hot: true },
+            { label: "Draft", key: "draft", count: counts.draft, icon: Sparkles, draft: true },
+            { label: "All", key: "all", count: counts.all, icon: Clock },
+            { label: "Ignored", key: "ignored", count: counts.ignored, icon: Archive },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = filter === tab.key;
+            return (
+              <Link
+                key={tab.key}
+                href={q ? `/inbox?filter=${tab.key}&q=${q}` : `/inbox?filter=${tab.key}`}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap shrink-0 transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-foreground/5 text-muted-foreground hover:bg-foreground/10"
+                )}
+              >
+                <Icon className="size-3" strokeWidth={1.5} />
+                {tab.label}
+                <span className={cn(
+                  "tabular text-[11px] font-semibold ml-0.5",
+                  isActive ? "text-primary-foreground/80" : "text-muted-foreground"
+                )}>
+                  {tab.count}
+                </span>
+              </Link>
+            );
+          })}
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -263,10 +303,13 @@ export default async function InboxPage({
         </div>
       </div>
 
-      {/* ── Thread view ───────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col bg-background min-w-0 min-h-0">
+      {/* ── Thread view — full screen on mobile when selected ─────────── */}
+      <div className={cn(
+        "flex-1 flex flex-col bg-background min-w-0 min-h-0",
+        selectedThreadId ? "flex" : "hidden lg:flex"
+      )}>
         {selectedContent ? (
-          <SelectedThread content={selectedContent} threadId={selectedThreadId!} />
+          <SelectedThread content={selectedContent} threadId={selectedThreadId!} currentFilter={filter} />
         ) : (
           <EmptyThreadState hasThreads={threads.length > 0} gmailConnected={!!account} />
         )}
@@ -305,6 +348,7 @@ function EmptyThreadState({ hasThreads, gmailConnected }: { hasThreads: boolean;
 function SelectedThread({
   content,
   threadId,
+  currentFilter,
 }: {
   content: {
     messages: (typeof emailMessages.$inferSelect)[];
@@ -315,6 +359,7 @@ function SelectedThread({
     linkedCustomer: { id: string; customerCode: string; name: string } | null;
   };
   threadId: string;
+  currentFilter?: string;
 }) {
   const { messages, lead, draft, latestInbound, profile, linkedCustomer } = content;
   const subject = messages.find((m) => m.subject)?.subject ?? "(no subject)";
@@ -323,13 +368,22 @@ function SelectedThread({
   return (
     <>
       {/* Header */}
-      <div className="px-7 pt-4 pb-3.5 border-b border-border flex items-start justify-between gap-4 bg-background">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-            <span className="text-[19px] font-semibold -tracking-[0.012em]">{subject}</span>
-            <Badge className="bg-info-tint text-info border-transparent">
-              {messages.length} message{messages.length !== 1 ? "s" : ""}
-            </Badge>
+      <div className="px-4 lg:px-7 pt-4 pb-3.5 border-b border-border flex items-start justify-between gap-4 bg-background">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1.5">
+            {/* Mobile back button */}
+            <Link
+              href={`/inbox?filter=${currentFilter ?? "new"}`}
+              className="lg:hidden size-8 -ml-1 grid place-items-center rounded-lg hover:bg-foreground/5 shrink-0"
+            >
+              <ArrowLeft className="size-4" />
+            </Link>
+            <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+              <span className="text-[16px] lg:text-[19px] font-semibold -tracking-[0.012em] truncate">{subject}</span>
+              <Badge className="bg-info-tint text-info border-transparent shrink-0">
+                {messages.length} message{messages.length !== 1 ? "s" : ""}
+              </Badge>
+            </div>
           </div>
           {lead && (
             <div className="flex items-center gap-2 text-[13px] text-muted-foreground flex-wrap mt-1">
@@ -349,7 +403,7 @@ function SelectedThread({
             </div>
           )}
         </div>
-        <div className="flex gap-1.5 shrink-0">
+        <div className="hidden lg:flex gap-1.5 shrink-0">
           <Link
             href={`/inbox/${threadId}`}
             className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -364,7 +418,7 @@ function SelectedThread({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="px-7 pt-5 space-y-4 pb-4">
+        <div className="px-4 lg:px-7 pt-4 lg:pt-5 space-y-4 pb-4">
           {messages.map((msg) => {
             const inbound = msg.direction === "inbound";
             const author = inbound
@@ -405,7 +459,7 @@ function SelectedThread({
 
         {/* Draft compose area */}
         {latestInbound && !latestInbound.aiCategory ? (
-          <div className="px-7 pb-6">
+          <div className="px-4 lg:px-7 pb-6">
             <Card className="p-4 text-center space-y-2">
               <Sparkles className="size-6 text-muted-foreground mx-auto" />
               <p className="text-[14px] text-muted-foreground">
@@ -417,7 +471,7 @@ function SelectedThread({
             </Card>
           </div>
         ) : latestInbound?.aiCategory && latestInbound.aiCategory !== "spam" && latestInbound.aiCategory !== "newsletter" ? (
-          <div className="px-7 pb-6">
+          <div className="px-4 lg:px-7 pb-6">
             <div className="rounded-xl overflow-hidden border border-[oklch(0.48_0.11_162/0.22)]">
               <DraftPanel
                 draft={draft ? {
