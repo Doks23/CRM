@@ -151,7 +151,7 @@ export function Sidebar({
       </nav>
 
       <div className="mx-3 mb-3 px-2 py-2.5 flex items-center gap-2.5 border-t border-sidebar-border pt-3">
-        <div className="size-8 rounded-lg overflow-hidden bg-gradient-to-br from-[oklch(0.66_0.16_150)] to-[oklch(0.48_0.11_162)] text-white text-xs font-semibold grid place-items-center shrink-0">
+        <div className="relative size-8 rounded-lg overflow-hidden bg-gradient-to-br from-[oklch(0.66_0.16_150)] to-[oklch(0.48_0.11_162)] text-white text-xs font-semibold grid place-items-center shrink-0">
           {userAvatar ? (
             <Image
               src={userAvatar}

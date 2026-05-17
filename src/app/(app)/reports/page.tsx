@@ -286,18 +286,17 @@ export default async function ReportsPage({
     const key = normalizeStage(r.stage);
     byStage[key] = (byStage[key] ?? 0) + r.count;
   }
-  const totalLeads = stageRows.reduce((s, r) => s + r.count, 0);
+  const totalLeads = stageRows.reduce((s, r) => {
+    const stage = normalizeStage(r.stage);
+    if (stage === "ignored") return s;
+    return s + r.count;
+  }, 0);
 
-  // Funnel mirrors the pipeline board exactly: one row per stage, in order.
-  // Each row's value is the count of leads currently at that stage OR
-  // anywhere downstream of it — a true cumulative funnel.
+  // Funnel shows non-cumulative lead count per stage.
   const PIPELINE_IDS = PIPELINE_STAGES.map((s) => s.id);
-  const funnel = PIPELINE_STAGES.map((s, i) => ({
+  const funnel = PIPELINE_STAGES.map((s) => ({
     label: s.label,
-    value: PIPELINE_IDS.slice(i).reduce(
-      (sum, id) => sum + (byStage[id] ?? 0),
-      0,
-    ),
+    value: byStage[s.id] ?? 0,
     color: s.color,
   }));
   const conversionPct =
