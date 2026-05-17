@@ -15,7 +15,7 @@ All milestones (M0–M6) complete. Live features:
 | Area | What it does |
 |---|---|
 | **Auth** | Google OAuth + email/password. Role-based (owner/sales/production). Allowlist gating. |
-| **Gmail Sync** | OAuth-based inbox connection, keyword filtering, configurable polling (1min–24h), backfill + incremental. |
+| **Gmail Sync** | OAuth-based inbox connection, keyword filtering, configurable polling (1min–24h), backfill + incremental. Live "synced X ago" status with auto-update and manual refresh. |
 | **Inbox** | Three-panel layout. Filters: New Mail / Draft / All Threads / Awaiting. Search, stage pills, draft panel. |
 | **AI Classify** | On-demand classification (relevant/cold/spam/internal/newsletter). Web enrichment at classify time. |
 | **AI Draft** | Draft generation with edit/send. Re-generation with custom instructions. Gmail Draft create + send. |
@@ -240,3 +240,4 @@ drizzle/
 - **Font sizes bumped ~1px** across all components for readability.
 - **HTML5 native drag-and-drop** for pipeline (no extra dependencies).
 - **Web enrichment best-effort** — plain HTTP fetch, no API keys, skips personal domains.
+- **Soft delete** — leads have `deleted_at` column; queries filter out deleted leads across inbox, pipeline, dashboard, reports, and cron jobs.

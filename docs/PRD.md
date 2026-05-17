@@ -2,7 +2,7 @@
 
 **Brand:** White Pops (Makhana / fox nut processing)
 **Owner:** Saurabh D
-**Last updated:** 2026-05-16
+**Last updated:** 2026-05-17
 **Status:** Implementation complete (M0–M6)
 
 ---
@@ -300,6 +300,8 @@ Three-panel layout:
 3. **Thread View** — Email thread with inbound/outbound styling. StageSelect + CustomerSelect in header. Classification button or Draft panel with edit/send controls. Avatar, direction arrows, timestamps.
 
 Full thread view (`/inbox/[gmailThreadId]`): right rail with LeadMemoryPanel, StageSelect/CustomerSelect, SampleTracker, DetailsCard.
+
+**Sync Status:** Inbox header shows live status "Gmail · synced X ago" with auto-updating timer (refreshes every 30s) and manual refresh button that triggers `POST /api/gmail/sync`. Shows error feedback if sync fails.
 
 ### 9.3 Pipeline (`/pipeline`)
 Kanban board with 5 columns: New → Info Sent → Negotiation → PO → Dispatched. Drag-and-drop to move stages. Lead cards show name, company, days since activity, assigned user. Lead assignment dialog, create lead button, search/filter.
