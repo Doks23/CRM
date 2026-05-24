@@ -49,3 +49,6 @@ next-env.d.ts
 
 # deployment/backup directories
 compassionate-clarke-*/
+
+# screenshot scripts env file (contains credentials)
+scripts/.env

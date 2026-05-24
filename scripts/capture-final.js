@@ -1,10 +1,11 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const APP_URL = 'https://whitepops-saathi.vercel.app/';
-const LOGIN_EMAIL = 'pd@whitepops.com';
-const LOGIN_PASSWORD = 'c2ce9c5a-cdeAa1!';
+const APP_URL = process.env.SCREENSHOT_APP_URL || 'http://localhost:3000';
+const LOGIN_EMAIL = process.env.SCREENSHOT_EMAIL || '';
+const LOGIN_PASSWORD = process.env.SCREENSHOT_PASSWORD || '';
 const SCREENSHOTS_DIR = path.join(__dirname, '..', 'docs', 'screenshots');
 
 function delay(ms) {
