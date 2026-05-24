@@ -58,29 +58,44 @@ export default async function DashboardPage() {
   const relevantSpark = last7.map((d) => d.relevant);
   const totalSpark = last7.map((d) => d.relevant + d.cold + d.other);
 
-  // Focus leads — pending AI drafts
-  const focusLeads = await db
-    .select({
-      leadId:        leads.id,
-      contactName:   leads.contactName,
-      company:       leads.company,
-      leadType:      leads.leadType,
-      stage:         leads.stage,
-      lastActivityAt: leads.lastActivityAt,
-      draftId:       aiDrafts.id,
-      draftBody:     aiDrafts.draftBody,
-      confidence:    emailMessages.aiConfidence,
-      aiReason:      emailMessages.aiReason,
-      detectedLang:  emailMessages.detectedLanguage,
-      gmailThreadId: emailMessages.gmailThreadId,
-      subject:       emailMessages.subject,
-    })
-    .from(aiDrafts)
-    .innerJoin(leads, eq(aiDrafts.leadId, leads.id))
-    .leftJoin(emailMessages, eq(emailMessages.id, aiDrafts.inReplyToMessageId))
-    .where(and(eq(aiDrafts.status, "pending"), isNull(leads.deletedAt)))
-    .orderBy(desc(leads.lastActivityAt))
-    .limit(3);
+   // Focus leads — unsent AI drafts (one per lead, distinct lead)
+   // Must match inbox draft filter: status in ('pending', 'approved', 'edited') AND sent_at is null
+   const focusLeads = await db
+     .select({
+       leadId:        leads.id,
+       contactName:   leads.contactName,
+       company:       leads.company,
+       leadType:      leads.leadType,
+       stage:         leads.stage,
+       lastActivityAt: leads.lastActivityAt,
+       draftId:       aiDrafts.id,
+       draftBody:     aiDrafts.draftBody,
+       draftStatus:   aiDrafts.status,
+       confidence:    emailMessages.aiConfidence,
+       aiReason:      emailMessages.aiReason,
+       detectedLang:  emailMessages.detectedLanguage,
+       gmailThreadId: emailMessages.gmailThreadId,
+       subject:       emailMessages.subject,
+     })
+     .from(aiDrafts)
+     .innerJoin(leads, eq(aiDrafts.leadId, leads.id))
+     .leftJoin(emailMessages, eq(emailMessages.id, aiDrafts.inReplyToMessageId))
+     .where(and(
+       sql`${aiDrafts.status} in ('pending', 'approved', 'edited')`,
+       isNull(aiDrafts.sentAt),
+       isNull(leads.deletedAt),
+       sql`${leads.stage} <> 'ignored'`,
+     ))
+     .orderBy(desc(aiDrafts.createdAt))
+     .limit(10);
+
+  // Post-DB deduplication: ensure distinct leadId in case DISTINCT ON wasn't applied
+  const seenLeads = new Set<string>();
+  const uniqueFocusLeads = focusLeads.filter((row) => {
+    if (seenLeads.has(row.leadId)) return false;
+    seenLeads.add(row.leadId);
+    return true;
+  });
 
   // Stage breakdown for PipelinePulse
   const stageRows = await db
@@ -254,13 +269,13 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             </div>
-            {focusLeads.length === 0 ? (
+            {uniqueFocusLeads.length === 0 ? (
               <div className="px-5 py-8 text-center text-[14px] text-muted-foreground">
                 No pending drafts — you&apos;re all caught up!
               </div>
             ) : (
               <div>
-                {focusLeads.map((r) => {
+                {uniqueFocusLeads.map((r) => {
                   const confPct = r.confidence ? Math.round(parseFloat(r.confidence) * 100) : null;
                   const ageMs = Date.now() - new Date(r.lastActivityAt).getTime();
                   const ageH = Math.floor(ageMs / 3_600_000);

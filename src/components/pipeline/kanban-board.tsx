@@ -19,6 +19,14 @@ const STAGES = [
   { key: "dispatched",  label: "Dispatched",  color: "bg-indigo-500" },
 ] as const;
 
+interface LinkedCustomerData {
+  id: string;
+  customerCode: string;
+  name: string;
+  email: string | null;
+  company: string | null;
+}
+
 interface LeadData {
   id: string;
   leadCode: string;
@@ -34,6 +42,8 @@ interface LeadData {
   messageCount: number;
   latestThreadId: string | null;
   assignedUserId: string | null;
+  customerId: string | null;
+  linkedCustomer: LinkedCustomerData | null;
 }
 
 export function KanbanBoard({

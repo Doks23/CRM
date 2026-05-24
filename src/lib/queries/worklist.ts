@@ -66,13 +66,17 @@ export async function loadWorklist(): Promise<WorklistTile[]> {
   const needsReply = needsReplyRow?.n ?? 0;
 
   // ── 2. Drafts pending ─────────────────────────────────────────────────
+  // Count distinct leads that have at least one unsent draft matching:
+  // status in ('pending', 'approved', 'edited') AND sent_at is null
+  // Must match the inbox draft filter logic for consistency
   const [draftsPendingRow] = await db
-    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .select({ n: sql<number>`count(distinct ${leads.id})`.mapWith(Number) })
     .from(aiDrafts)
     .innerJoin(leads, eq(leads.id, aiDrafts.leadId))
     .where(
       and(
-        eq(aiDrafts.status, "pending"),
+        sql`${aiDrafts.status} in ('pending', 'approved', 'edited')`,
+        isNull(aiDrafts.sentAt),
         isNull(leads.deletedAt),
         sql`${leads.stage} <> 'ignored'`,
       ),

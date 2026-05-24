@@ -67,7 +67,7 @@ export default async function InboxPage({
     draft: typeof aiDrafts.$inferSelect | null;
     latestInbound: typeof emailMessages.$inferSelect | null;
     profile: { companyName: string; drafterProvider: string | null; drafterModel: string | null } | null;
-    linkedCustomer: { id: string; customerCode: string; name: string } | null;
+    linkedCustomer: { id: string; customerCode: string; name: string; email: string | null; company: string | null } | null;
   } | null = null;
 
   if (selectedThreadId) {
@@ -91,11 +91,11 @@ export default async function InboxPage({
         })
       : null;
 
-    let linkedCustomer: { id: string; customerCode: string; name: string } | null = null;
+    let linkedCustomer: { id: string; customerCode: string; name: string; email: string | null; company: string | null } | null = null;
     if (lead?.customerId) {
       const c = await db.query.customers.findFirst({
         where: eq(customers.id, lead.customerId),
-        columns: { id: true, customerCode: true, name: true },
+        columns: { id: true, customerCode: true, name: true, email: true, company: true },
       });
       if (c) linkedCustomer = c;
     }
@@ -356,7 +356,7 @@ function SelectedThread({
     draft: typeof aiDrafts.$inferSelect | null;
     latestInbound: typeof emailMessages.$inferSelect | null;
     profile: { companyName: string; drafterProvider: string | null; drafterModel: string | null } | null;
-    linkedCustomer: { id: string; customerCode: string; name: string } | null;
+    linkedCustomer: { id: string; customerCode: string; name: string; email: string | null; company: string | null } | null;
   };
   threadId: string;
   currentFilter?: string;
@@ -385,23 +385,40 @@ function SelectedThread({
               </Badge>
             </div>
           </div>
-          {lead && (
-            <div className="flex items-center gap-2 text-[13px] text-muted-foreground flex-wrap mt-1">
-              {lead.source === "linkedin" && (
-                <span className="h-[18px] px-1.5 rounded text-[10px] font-bold uppercase tracking-[0.08em] bg-[#0A66C2]/10 text-[#0A66C2] flex items-center">in</span>
-              )}
-              <span className="text-foreground/85 font-medium">{lead.contactName || lead.primaryEmail}</span>
-              {lead.company && <><span className="text-foreground/30">·</span><span>{lead.company}</span></>}
-              <span className="text-foreground/30">·</span>
-              <StageSelect leadId={lead.id} currentStage={lead.stage} />
-              <span className="text-foreground/30">·</span>
-              <CustomerLinkButton
-                leadId={lead.id}
-                leadContact={{ contactName: lead.contactName, primaryEmail: lead.primaryEmail, company: lead.company, phone: lead.phone }}
-                customer={linkedCustomer}
-              />
-            </div>
-          )}
+           {lead && (
+             <div className="flex items-center gap-2 text-[13px] text-muted-foreground flex-wrap mt-1">
+               {lead.source === "linkedin" && (
+                 <span className="h-[18px] px-1.5 rounded text-[10px] font-bold uppercase tracking-[0.08em] bg-[#0A66C2]/10 text-[#0A66C2] flex items-center">in</span>
+               )}
+               {lead.source === "referral" && (
+                 <span className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600">
+                   Referral
+                 </span>
+               )}
+               {!linkedCustomer && (lead.primaryEmail.toLowerCase().endsWith("@linkedin.com") || lead.primaryEmail.toLowerCase().endsWith("@e.linkedin.com")) ? (
+                 <span className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded text-[10px] bg-amber-500/10 text-amber-700 font-medium">
+                   LinkedIn system email
+                 </span>
+               ) : null}
+               <span className="text-foreground/85 font-medium">
+                 {linkedCustomer?.name || lead.contactName || (linkedCustomer?.email ?? lead.primaryEmail)}
+               </span>
+               {(linkedCustomer?.company || lead.company) && (
+                 <>
+                   <span className="text-foreground/30">·</span>
+                   <span>{linkedCustomer?.company || lead.company}</span>
+                 </>
+               )}
+               <span className="text-foreground/30">·</span>
+               <StageSelect leadId={lead.id} currentStage={lead.stage} />
+               <span className="text-foreground/30">·</span>
+               <CustomerLinkButton
+                 leadId={lead.id}
+                 leadContact={{ contactName: lead.contactName, primaryEmail: lead.primaryEmail, company: lead.company, phone: lead.phone }}
+                 customer={linkedCustomer}
+               />
+             </div>
+           )}
         </div>
         <div className="hidden lg:flex gap-1.5 shrink-0">
           <Link
@@ -457,21 +474,16 @@ function SelectedThread({
           })}
         </div>
 
-        {/* Draft compose area */}
-        {latestInbound && !latestInbound.aiCategory ? (
+        {/* Draft compose area - always show DraftPanel when there's an inbound message */}
+        {latestInbound ? (
           <div className="px-4 lg:px-7 pb-6">
-            <Card className="p-4 text-center space-y-2">
-              <Sparkles className="size-6 text-muted-foreground mx-auto" />
-              <p className="text-[14px] text-muted-foreground">
-                This message hasn&apos;t been analyzed yet.
-              </p>
-              <Link href={`/inbox/${threadId}`} className={buttonVariants({ size: "sm" })}>
-                <Sparkles className="size-3.5" /> Run AI Analysis
-              </Link>
-            </Card>
-          </div>
-        ) : latestInbound?.aiCategory && latestInbound.aiCategory !== "spam" && latestInbound.aiCategory !== "newsletter" ? (
-          <div className="px-4 lg:px-7 pb-6">
+            {!latestInbound.aiCategory && (
+              <div className="mb-2 text-center">
+                <Link href={`/inbox/${threadId}`} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+                  Message not yet analyzed → click to run full AI classification
+                </Link>
+              </div>
+            )}
             <div className="rounded-xl overflow-hidden border border-[oklch(0.48_0.11_162/0.22)]">
               <DraftPanel
                 draft={draft ? {

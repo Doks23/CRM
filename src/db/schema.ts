@@ -263,6 +263,7 @@ export const emailMessages = pgTable(
     aiReason: text("ai_reason"),
     detectedLanguage: languageEnum("detected_language"),
     processedAt: timestamp("processed_at", { mode: "date" }),
+    emailMetadata: jsonb("email_metadata").$type<EmailMessageMetadata>(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
@@ -320,6 +321,20 @@ export const aiDrafts = pgTable(
 export type AllowedEmail = {
   email: string;
   role: "owner" | "sales" | "production";
+};
+
+export type EmailMessageMetadata = {
+  isLinkedInNotification?: boolean;
+  forwarded?: {
+    originalFromName?: string | null;
+    originalFromEmail?: string | null;
+    originalSubject?: string | null;
+    originalDate?: string | null;
+    originalTo?: string | null;
+    forwarderName?: string | null;
+    forwarderEmail?: string | null;
+    isInternalForward?: boolean;
+  };
 };
 
 /**

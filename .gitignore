@@ -46,3 +46,6 @@ next-env.d.ts
 
 # uploaded files
 /public/uploads/*
+
+# deployment/backup directories
+compassionate-clarke-*/

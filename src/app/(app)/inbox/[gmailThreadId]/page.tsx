@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { eq, asc, desc } from "drizzle-orm";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, AlertTriangle, UserPlus, Share2 } from "lucide-react";
 
 import { db } from "@/db";
 import {
@@ -10,6 +10,7 @@ import {
   products,
   sampleDispatches,
   customers,
+  type EmailMessageMetadata,
 } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -68,14 +69,33 @@ export default async function ThreadPage({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Minimal header bar */}
+       {/* Minimal header bar */}
       {lead && (
         <div className="px-6 pt-3 pb-0 flex items-center gap-2 text-[13px] text-muted-foreground flex-wrap">
           {lead.source === "linkedin" && (
             <span className="h-[18px] px-1.5 rounded text-[10px] font-bold uppercase tracking-[0.08em] bg-[#0A66C2]/10 text-[#0A66C2] flex items-center">in</span>
           )}
-          <span className="text-foreground/85 font-medium">{lead.contactName || lead.primaryEmail}</span>
-          {lead.company && <><span className="text-foreground/30">·</span><span>{lead.company}</span></>}
+          {lead.source === "referral" && (
+            <span className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600">
+              <Share2 className="h-3 w-3" />
+              Referral
+            </span>
+          )}
+          {!linkedCustomer && (lead.primaryEmail.toLowerCase().endsWith("@linkedin.com") || lead.primaryEmail.toLowerCase().endsWith("@e.linkedin.com")) ? (
+            <span className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded text-[10px] bg-amber-500/10 text-amber-700 font-medium">
+              <AlertTriangle className="h-3 w-3" />
+              Real email unknown—this is a LinkedIn system address
+            </span>
+          ) : null}
+          <span className="text-foreground/85 font-medium">
+            {linkedCustomer?.name || lead.contactName || (linkedCustomer?.email ?? lead.primaryEmail)}
+          </span>
+          {(linkedCustomer?.company || lead.company) && (
+            <>
+              <span className="text-foreground/30">·</span>
+              <span>{linkedCustomer?.company || lead.company}</span>
+            </>
+          )}
           <span className="text-foreground/30">·</span>
           <span className="font-mono text-[11px]">{lead.leadCode}</span>
           <span className="text-foreground/30">·</span>
@@ -98,14 +118,52 @@ export default async function ThreadPage({
 
             {/* Reply surface */}
             {latestInbound && !latestInbound.aiCategory ? (
-              <div className="rounded-lg border bg-card">
+              <div className="space-y-3">
                 <ClassifyButton
                   gmailMessageId={latestInbound.gmailMessageId}
                   subject={subject}
                   toEmail={latestInbound.fromEmail ?? lead?.primaryEmail ?? ""}
                 />
+                {/* Also show DraftPanel below so users can generate manual draft without classification */}
+                <div className="rounded-lg border bg-card overflow-hidden">
+                  <DraftPanel
+                    draft={
+                      draft
+                        ? {
+                            id: draft.id,
+                            body: draft.draftBody,
+                            editedBody: draft.editedBody,
+                            status: draft.status as string,
+                            gmailDraftId: draft.gmailDraftId,
+                            inReplyToMessageId:
+                              draft.inReplyToMessageId ?? undefined,
+                          }
+                        : null
+                    }
+                    subject={subject}
+                    toEmail={latestInbound?.fromEmail ?? lead?.primaryEmail ?? ""}
+                    threadId={gmailThreadId}
+                    leadId={messages[0].leadId}
+                    aiCategory={latestInbound?.aiCategory ?? null}
+                    inboundProcessedAt={
+                      latestInbound?.processedAt
+                        ? new Date(latestInbound.processedAt).toISOString()
+                        : null
+                    }
+                    inboundMessageId={latestInbound?.id ?? null}
+                    businessProfile={
+                      profile
+                        ? {
+                            companyName: profile.companyName ?? "White Pops",
+                            drafterProvider: profile.drafterProvider,
+                            drafterModel: profile.drafterModel,
+                          }
+                        : null
+                    }
+                  />
+                </div>
               </div>
-            ) : (
+            ) : latestInbound ? (
               <div className="rounded-lg border bg-card overflow-hidden">
                 <DraftPanel
                   draft={
@@ -143,7 +201,7 @@ export default async function ThreadPage({
                   }
                 />
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Right rail: AI memory, samples, details. Stacks above on mobile. */}
@@ -247,6 +305,10 @@ function Thread({
         const author = inbound
           ? lead?.contactName ?? msg.fromEmail ?? "Unknown"
           : "You";
+        const meta = msg.emailMetadata as EmailMessageMetadata | undefined;
+        const isLinkedInMsg = meta?.isLinkedInNotification;
+        const fwd = meta?.forwarded;
+
         return (
           <article
             key={msg.id}
@@ -271,6 +333,22 @@ function Thread({
                   ? `<${msg.fromEmail}>`
                   : ""}
               </span>
+              {isLinkedInMsg && (
+                <span className="inline-flex items-center gap-1 px-1.5 rounded text-[10px] bg-[#0A66C2]/10 text-[#0A66C2] shrink-0">
+                  via LinkedIn
+                </span>
+              )}
+              {fwd && fwd.originalFromEmail && (
+                <span className={cn(
+                  "inline-flex items-center gap-1 px-1.5 rounded text-[10px] shrink-0",
+                  fwd.isInternalForward
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-muted/60 text-muted-foreground"
+                )}>
+                  <UserPlus className="h-3 w-3" />
+                  Fwd: {fwd.originalFromName || fwd.originalFromEmail}
+                </span>
+              )}
               <span className="ml-auto text-muted-foreground tabular-nums shrink-0">
                 {formatDateTime(msg.receivedAt)}
               </span>
@@ -283,6 +361,15 @@ function Thread({
                 </Badge>
               ) : null}
             </header>
+            {fwd && (
+              <div className="px-4 py-1.5 text-[11px] text-muted-foreground border-b border-border/40 bg-muted/20">
+                {fwd.isInternalForward
+                  ? "Forwarded internally — "
+                  : "Forwarded — "}
+                {fwd.forwarderEmail && `by ${fwd.forwarderName || fwd.forwarderEmail}`}
+                {fwd.originalFromEmail && ` ← originally from ${fwd.originalFromName || ""} <${fwd.originalFromEmail}>`}
+              </div>
+            )}
             <div className="px-4 py-3 text-[14px] leading-[1.55] whitespace-pre-wrap break-words text-foreground/90">
               {msg.bodyText || (
                 <span className="italic text-muted-foreground">

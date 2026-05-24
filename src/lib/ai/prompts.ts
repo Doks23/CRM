@@ -34,6 +34,16 @@ Language detection: classify the email's primary language as "en" (English), "hi
 
 IMPORTANT — LinkedIn notification emails: The sender email domain will be linkedin.com or e.linkedin.com, but the email body contains a message from an actual person. Extract that person's name, company, and any contact details from the body — NOT from the email headers. These are real leads being forwarded through LinkedIn; treat them as "relevant".
 
+IMPORTANT — Forwarded emails: Watch for patterns like "---------- Forwarded message ----------" in the body or "Fwd:" in the subject. A forwarded email contains TWO parts:
+1. The forwarder's message (if any) at the top
+2. The original email below the forwarded header
+
+When processing a forwarded email:
+- Identify the ORIGINAL sender (From: inside the forwarded block) — this is the actual lead
+- Identify the FORWARDER (the From: in the email headers — NOT the lead)
+- Extract contact info from the ORIGINAL email, not the forwarder
+- If the forwarder is someone on our team (internal) and the original sender is external, this is a warm referral lead
+
 Be conservative: when in doubt between "relevant" and "cold", lean "relevant" with a lower confidence (0.5-0.7) so the human can review. Only mark "cold"/"spam" with high confidence if you are sure.
 
 Respond with a single JSON object matching the schema. No prose, no markdown fences.`;

@@ -2,16 +2,25 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AssignDialog } from "./assign-dialog";
 import { EditLeadDialog } from "./edit-lead-dialog";
+import { CustomerLinkButton } from "@/components/inbox/customer-link-button";
 
 interface UserData {
   id: string;
   name: string | null;
   email: string;
   role: string;
+}
+
+interface LinkedCustomerData {
+  id: string;
+  customerCode: string;
+  name: string;
+  email: string | null;
+  company: string | null;
 }
 
 interface LeadCardData {
@@ -29,6 +38,8 @@ interface LeadCardData {
   messageCount: number;
   latestThreadId: string | null;
   assignedUserId: string | null;
+  customerId: string | null;
+  linkedCustomer: LinkedCustomerData | null;
 }
 
 export function LeadCard({
@@ -84,35 +95,41 @@ export function LeadCard({
         isPending && "opacity-60",
       )}
     >
-      <div
-        role="button"
-        tabIndex={0}
-        className="block p-3 pb-1 cursor-pointer"
-        onClick={() => setEditDialogOpen(true)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setEditDialogOpen(true); }}
-      >
-        <div className="font-medium truncate flex items-center gap-2">
-          {lead.contactName || lead.primaryEmail}
-          <span className="text-[10px] font-mono text-muted-foreground">{lead.leadCode}</span>
-        </div>
-        {lead.company ? (
-          <div className="text-xs text-muted-foreground truncate mt-0.5">
-            {lead.company}
-          </div>
-        ) : null}
-        <div className="flex items-center gap-2 mt-2 text-[12px] text-muted-foreground">
-          <span className="capitalize">{lead.leadType.replace(/_/g, " ")}</span>
-          {lead.messageCount > 0 ? (
-            <>
-              <span>·</span>
-              <span>{lead.messageCount} msgs</span>
-            </>
-          ) : null}
-          <span className="ml-auto">
-            {daysSinceActivity === 0 ? "today" : daysSinceActivity === 1 ? "1d ago" : `${daysSinceActivity}d ago`}
-          </span>
-        </div>
-      </div>
+       <div
+         role="button"
+         tabIndex={0}
+         className="block p-3 pb-1 cursor-pointer"
+         onClick={() => setEditDialogOpen(true)}
+         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setEditDialogOpen(true); }}
+       >
+         <div className="font-medium truncate flex items-center gap-2">
+           {lead.linkedCustomer?.name || lead.contactName || (lead.linkedCustomer?.email ?? lead.primaryEmail)}
+           <span className="text-[10px] font-mono text-muted-foreground">{lead.leadCode}</span>
+           {lead.linkedCustomer && (
+             <span className="inline-flex items-center gap-1 text-[9px] px-1.5 rounded bg-emerald-500/10 text-emerald-600 font-medium">
+               <Users className="size-2.5" />
+               {lead.linkedCustomer.customerCode}
+             </span>
+           )}
+         </div>
+         {(lead.linkedCustomer?.company || lead.company) ? (
+           <div className="text-xs text-muted-foreground truncate mt-0.5">
+             {lead.linkedCustomer?.company || lead.company}
+           </div>
+         ) : null}
+         <div className="flex items-center gap-2 mt-2 text-[12px] text-muted-foreground">
+           <span className="capitalize">{lead.leadType.replace(/_/g, " ")}</span>
+           {lead.messageCount > 0 ? (
+             <>
+               <span>·</span>
+               <span>{lead.messageCount} msgs</span>
+             </>
+           ) : null}
+           <span className="ml-auto">
+             {daysSinceActivity === 0 ? "today" : daysSinceActivity === 1 ? "1d ago" : `${daysSinceActivity}d ago`}
+           </span>
+         </div>
+       </div>
       {confirmDelete && (
         <div className="mx-3 mb-1 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-[12px]">
           <p className="text-destructive font-medium mb-1.5">Delete this lead?</p>
@@ -134,31 +151,42 @@ export function LeadCard({
           </div>
         </div>
       )}
-      <div className="flex items-center justify-between px-3 pb-2 pt-1 gap-1">
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setEditDialogOpen(true)}
-            title="Edit contact details"
-            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/8 transition-colors"
-          >
-            <Pencil className="size-3" />
-          </button>
-          <button
-            onClick={() => setConfirmDelete(true)}
-            disabled={isPending}
-            title="Delete lead"
-            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <Trash2 className="size-3" />
-          </button>
-        </div>
-        {assignee ? (
-          <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">
-            {assignee.name || assignee.email}
-          </span>
-        ) : null}
-        <AssignDialog leadId={lead.id} currentUserId={lead.assignedUserId} sessionUserId={sessionUserId} users={users} />
-      </div>
+       <div className="flex items-center justify-between px-3 pb-2 pt-1 gap-1">
+         <div className="flex items-center gap-1">
+           <CustomerLinkButton
+             leadId={lead.id}
+             leadContact={{
+               contactName: lead.contactName,
+               primaryEmail: lead.primaryEmail,
+               company: lead.company,
+               phone: lead.phone,
+             }}
+             customer={lead.linkedCustomer}
+             compact
+           />
+           <button
+             onClick={() => setEditDialogOpen(true)}
+             title="Edit contact details"
+             className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/8 transition-colors"
+           >
+             <Pencil className="size-3" />
+           </button>
+           <button
+             onClick={() => setConfirmDelete(true)}
+             disabled={isPending}
+             title="Delete lead"
+             className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+           >
+             <Trash2 className="size-3" />
+           </button>
+         </div>
+         {assignee ? (
+           <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">
+             {assignee.name || assignee.email}
+           </span>
+         ) : null}
+         <AssignDialog leadId={lead.id} currentUserId={lead.assignedUserId} sessionUserId={sessionUserId} users={users} />
+       </div>
       {error && (
         <div className="px-3 pb-2 flex items-center gap-1 text-[11px] text-destructive">
           <AlertTriangle className="size-3 shrink-0" />

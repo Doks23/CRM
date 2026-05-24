@@ -1,0 +1,1 @@
+ALTER TABLE "email_message" ADD COLUMN "email_metadata" jsonb;

@@ -72,67 +72,71 @@ export async function POST(req: NextRequest) {
 
   const isEdited = finalBody !== draft.draftBody;
 
-  try {
-    const message = draft.inReplyToMessageId
-      ? await db.query.emailMessages.findFirst({
-          where: eq(emailMessages.id, draft.inReplyToMessageId),
-        })
-      : null;
+   try {
+     const message = draft.inReplyToMessageId
+       ? await db.query.emailMessages.findFirst({
+           where: eq(emailMessages.id, draft.inReplyToMessageId),
+         })
+       : null;
 
-    const threadId = body.threadId ?? message?.gmailThreadId ?? "";
-    const toEmail = body.toEmail ?? message?.fromEmail ?? "";
-    const subject = body.subject ?? message?.subject ?? "";
+     const threadId = body.threadId ?? message?.gmailThreadId ?? "";
+     const toEmail = body.toEmail ?? message?.fromEmail ?? "";
+     const cc = body.cc as string[] | null | undefined;
+     const bcc = body.bcc as string[] | null | undefined;
+     const subject = body.subject ?? message?.subject ?? "";
 
-    if (!toEmail) {
-      return NextResponse.json(
-        { error: "Recipient email is required" },
-        { status: 400 },
-      );
-    }
+     if (!toEmail) {
+       return NextResponse.json(
+         { error: "Recipient email is required" },
+         { status: 400 },
+       );
+     }
 
-    if (!threadId) {
-      return NextResponse.json(
-        { error: "Cannot determine Gmail thread ID" },
-        { status: 400 },
-      );
-    }
+     if (!threadId) {
+       return NextResponse.json(
+         { error: "Cannot determine Gmail thread ID" },
+         { status: 400 },
+       );
+     }
 
-    // Persist the send key BEFORE calling Gmail so a crash mid-flight leaves
-    // a paper trail. The retry path above relies on this row already having
-    // the key set.
-    if (clientSendKey && draft.clientSendKey !== clientSendKey) {
-      await db
-        .update(aiDrafts)
-        .set({ clientSendKey })
-        .where(eq(aiDrafts.id, draftId));
-    }
+     // Persist the send key BEFORE calling Gmail so a crash mid-flight leaves
+     // a paper trail. The retry path above relies on this row already having
+     // the key set.
+     if (clientSendKey && draft.clientSendKey !== clientSendKey) {
+       await db
+         .update(aiDrafts)
+         .set({ clientSendKey })
+         .where(eq(aiDrafts.id, draftId));
+     }
 
-    // Reuse an already-created Gmail draft if a previous attempt got that far
-    // but failed before send completed. Without this, retries duplicate the
-    // Gmail Draft in the user's drafts folder.
-    let gmailDraftId = draft.gmailDraftId;
-    if (!gmailDraftId) {
-      gmailDraftId = await createGmailDraft({
-        to: toEmail,
-        subject: subject.startsWith("Re:") ? subject : `Re: ${subject}`,
-        body: finalBody,
-        threadId,
-      });
+     // Reuse an already-created Gmail draft if a previous attempt got that far
+     // but failed before send completed. Without this, retries duplicate the
+     // Gmail Draft in the user's drafts folder.
+     let gmailDraftId = draft.gmailDraftId;
+     if (!gmailDraftId) {
+       gmailDraftId = await createGmailDraft({
+         to: toEmail,
+         cc: cc && cc.length > 0 ? cc : null,
+         bcc: bcc && bcc.length > 0 ? bcc : null,
+         subject: subject.startsWith("Re:") ? subject : `Re: ${subject}`,
+         body: finalBody,
+         threadId,
+       });
 
-      if (!gmailDraftId) {
-        return NextResponse.json(
-          { error: "Gmail account not connected" },
-          { status: 500 },
-        );
-      }
+       if (!gmailDraftId) {
+         return NextResponse.json(
+           { error: "Gmail account not connected" },
+           { status: 500 },
+         );
+       }
 
-      // Save the Gmail draft id immediately, before we attempt to send it.
-      // A retry now finds gmailDraftId set and skips re-creation.
-      await db
-        .update(aiDrafts)
-        .set({ gmailDraftId })
-        .where(eq(aiDrafts.id, draftId));
-    }
+       // Save the Gmail draft id immediately, before we attempt to send it.
+       // A retry now finds gmailDraftId set and skips re-creation.
+       await db
+         .update(aiDrafts)
+         .set({ gmailDraftId })
+         .where(eq(aiDrafts.id, draftId));
+     }
 
     const sentMessageId = await sendGmailDraft(gmailDraftId);
 

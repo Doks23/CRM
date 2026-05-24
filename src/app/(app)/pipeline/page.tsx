@@ -1,16 +1,15 @@
-import { desc, eq, isNull, sql } from "drizzle-orm";
+import { desc, eq, isNull, sql, inArray } from "drizzle-orm";
 
 import { Card } from "@/components/ui/card";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { leads, emailMessages, users } from "@/db/schema";
+import { leads, emailMessages, users, customers } from "@/db/schema";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import { PipelineToolbar } from "@/components/pipeline/pipeline-toolbar";
 import { PIPELINE_STAGES } from "@/lib/pipeline-stages";
 
 export const dynamic = "force-dynamic";
 
-// Summary bar shares the canonical stage definition with the funnel.
 const STAGE_COLORS = PIPELINE_STAGES;
 
 export default async function PipelinePage({
@@ -37,6 +36,7 @@ export default async function PipelinePage({
         score: leads.score,
         lastActivityAt: leads.lastActivityAt,
         assignedUserId: leads.assignedUserId,
+        customerId: leads.customerId,
         messageCount: sql<number>`count(${emailMessages.id})`.mapWith(Number),
         latestThreadId: sql<string | null>`(
           select gmail_thread_id from "email_message"
@@ -60,11 +60,35 @@ export default async function PipelinePage({
     }),
   ]);
 
-  // Group leads by stage key for the KanbanBoard.
+  let leadsWithCustomers = leadsWithStats.map((l) => ({ ...l, linkedCustomer: null as any }));
+
+  const customerIds = leadsWithStats
+    .map((l) => l.customerId)
+    .filter((id): id is string => id !== null);
+
+  if (customerIds.length > 0) {
+    const customerList = await db
+      .select({
+        id: customers.id,
+        customerCode: customers.customerCode,
+        name: customers.name,
+        email: customers.email,
+        company: customers.company,
+      })
+      .from(customers)
+      .where(inArray(customers.id, customerIds));
+
+    const customerMap = new Map(customerList.map((c) => [c.id, c]));
+    leadsWithCustomers = leadsWithStats.map((l) => ({
+      ...l,
+      linkedCustomer: l.customerId ? customerMap.get(l.customerId) ?? null : null,
+    }));
+  }
+
   const HIDDEN_STAGES = new Set(["ignored"]);
   const VISIBLE_STAGES = new Set(["new", "info_sent", "negotiation", "po", "dispatched"]);
-  const leadsByStage: Record<string, typeof leadsWithStats> = {};
-  for (const lead of leadsWithStats) {
+  const leadsByStage: Record<string, typeof leadsWithCustomers> = {};
+  for (const lead of leadsWithCustomers) {
     if (HIDDEN_STAGES.has(lead.stage)) continue;
     if (!VISIBLE_STAGES.has(lead.stage)) continue;
     const bucket = leadsByStage[lead.stage] ?? [];
@@ -74,7 +98,6 @@ export default async function PipelinePage({
 
   const totalLeads = Object.values(leadsByStage).flat().length;
 
-  // Count distribution for the summary bar.
   const stageCounts = STAGE_COLORS.map((s) => ({
     ...s,
     count: leadsByStage[s.id]?.length ?? 0,

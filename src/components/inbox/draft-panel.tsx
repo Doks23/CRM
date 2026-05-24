@@ -10,10 +10,13 @@ import {
   Send,
   Sparkles,
   X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface DraftData {
@@ -54,6 +57,14 @@ const DRAFT_TIMEOUT_SECONDS = 60;
 // Fetch-side timeout for regenerate/send so the UI never hangs forever.
 const FETCH_TIMEOUT_MS = 60_000;
 
+function parseEmailList(input: string): string[] {
+  if (!input.trim()) return [];
+  return input
+    .split(/[,;]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s.includes("@"));
+}
+
 export function DraftPanel({
   draft,
   subject,
@@ -75,6 +86,9 @@ export function DraftPanel({
   const [showRewrite, setShowRewrite] = useState(false);
   const [rewriteInstructions, setRewriteInstructions] = useState("");
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [ccInput, setCcInput] = useState("");
+  const [bccInput, setBccInput] = useState("");
 
   // Refresh server state every 8s while we're waiting on a draft, so the
   // panel transitions from "drafting" → "ready" without the user clicking.
@@ -89,24 +103,30 @@ export function DraftPanel({
     return () => clearInterval(id);
   }, [isWaitingForDraft, router]);
 
-  // No draft surface for categories where we never reply.
-  if (!aiCategory || aiCategory === "spam" || aiCategory === "newsletter") {
-    return null;
-  }
-
-  // ── State 1: awaiting a fresh draft (or stuck) ────────────────────────
+  // ── State 0: no draft at all, or category where we don't auto-draft
   if (!draft) {
-    if (aiCategory !== "relevant" && aiCategory !== "cold") return null;
+    const isRelevantOrCold = aiCategory === "relevant" || aiCategory === "cold";
+    const isSpamOrNewsletter = aiCategory === "spam" || aiCategory === "newsletter";
+    const isInternal = aiCategory === "internal";
+    const isUnclassified = !aiCategory;
 
-    const elapsedSec = inboundProcessedAt
-      ? Math.floor((Date.now() - new Date(inboundProcessedAt).getTime()) / 1000)
-      : 0;
-    const isStuck = elapsedSec > DRAFT_TIMEOUT_SECONDS;
+    if (isRelevantOrCold && inboundProcessedAt) {
+      const elapsedSec = Math.floor((Date.now() - new Date(inboundProcessedAt).getTime()) / 1000);
+      const isStuck = elapsedSec > DRAFT_TIMEOUT_SECONDS;
 
-    return (
-      <div className="border-t bg-white dark:bg-zinc-950 px-6 py-4">
-        <div className="max-w-3xl mx-auto w-full space-y-3">
-          {isStuck ? (
+      if (!isStuck) {
+        return (
+          <div className="border-t bg-white dark:bg-zinc-950 px-6 py-4">
+            <div className="max-w-3xl mx-auto w-full space-y-3">
+              <DraftingSpinner profile={businessProfile} elapsedSec={elapsedSec} />
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="border-t bg-white dark:bg-zinc-950 px-6 py-4">
+          <div className="max-w-3xl mx-auto w-full space-y-3">
             <StuckDraftCard
               error={error}
               isRegenerating={isRegenerating}
@@ -121,10 +141,53 @@ export function DraftPanel({
                 });
               }}
             />
-          ) : (
-            <DraftingSpinner profile={businessProfile} elapsedSec={elapsedSec} />
-          )}
+          </div>
         </div>
+      );
+    }
+
+    let contextLabel = "";
+    if (isSpamOrNewsletter) contextLabel = `Classified as ${aiCategory} — not something we normally auto-draft`;
+    else if (isInternal) contextLabel = "Classified as internal";
+    else if (isUnclassified) contextLabel = "Not analyzed yet";
+    else contextLabel = "No draft yet";
+
+    return (
+      <div className="border-t bg-white dark:bg-zinc-950 px-6 py-4">
+        <div className="max-w-3xl mx-auto w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Sparkles className="h-4 w-4" />
+            <span>{contextLabel}.</span>
+            <span className="text-xs text-muted-foreground/80">
+              {inboundMessageId ? "You can still generate a manual draft." : "No inbound message to reply to."}
+            </span>
+          </div>
+          {inboundMessageId ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isRegenerating}
+               onClick={async () => {
+                 await regenerateDraft({
+                   leadId,
+                   inReplyToMessageId: inboundMessageId,
+                   instructions: null,
+                   setIsRegenerating,
+                   setError,
+                   onDone: (body) => {
+                     if (body) router.refresh();
+                   },
+                 });
+               }}
+            >
+              <RefreshCw
+                className={cn("h-3.5 w-3.5 mr-1", isRegenerating && "animate-spin")}
+              />
+              {isRegenerating ? "Generating…" : "Generate AI Draft"}
+            </Button>
+          ) : null}
+        </div>
+        {error ? <ErrorBlock error={error} /> : null}
       </div>
     );
   }
@@ -166,22 +229,52 @@ export function DraftPanel({
     );
   }
 
-  // Sent — show a quiet confirmation.
-  if (draft.status === "sent") {
-    return (
-      <div className="border-t bg-primary/5 px-6 py-3">
-        <div className="max-w-3xl mx-auto w-full flex items-center gap-2 text-sm text-primary">
-          <Send className="h-3.5 w-3.5" />
-          <span>Reply sent.</span>
-        </div>
-      </div>
-    );
-  }
+   // Sent — show confirmation AND allow generating follow-up/chaser drafts.
+   if (draft.status === "sent") {
+     return (
+       <div className="border-t bg-white dark:bg-zinc-950 px-6 py-4">
+         <div className="max-w-3xl mx-auto w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+           <div className="flex items-center gap-2 text-sm text-primary">
+             <Send className="h-4 w-4" />
+             <span className="font-medium">Reply sent.</span>
+           </div>
+           {inboundMessageId ? (
+             <Button
+               size="sm"
+               variant="outline"
+               disabled={isRegenerating}
+               onClick={async () => {
+                 await regenerateDraft({
+                   leadId,
+                   inReplyToMessageId: inboundMessageId,
+                   instructions: null,
+                   setIsRegenerating,
+                   setError,
+                   onDone: (body) => {
+                     if (body) router.refresh();
+                   },
+                 });
+               }}
+             >
+               <RefreshCw
+                 className={cn("h-3.5 w-3.5 mr-1", isRegenerating && "animate-spin")}
+               />
+               {isRegenerating ? "Generating…" : "Generate follow-up draft"}
+             </Button>
+           ) : null}
+         </div>
+         {error ? <ErrorBlock error={error} /> : null}
+       </div>
+     );
+   }
 
   // Pending / approved / edited → full editor.
   const handleSend = async () => {
     setError(null);
     setSuccess(null);
+
+    const ccEmails = parseEmailList(ccInput);
+    const bccEmails = parseEmailList(bccInput);
 
     // Generate ONE key per logical send attempt. A network-level retry inside
     // the same attempt re-uses this key so the server can dedupe.
@@ -205,6 +298,8 @@ export function DraftPanel({
             threadId,
             leadId,
             toEmail,
+            cc: ccEmails.length > 0 ? ccEmails : null,
+            bcc: bccEmails.length > 0 ? bccEmails : null,
             subject,
           }),
         });
@@ -263,18 +358,49 @@ export function DraftPanel({
   return (
     <div className="border-t bg-white dark:bg-zinc-950">
       <div className="max-w-3xl mx-auto w-full p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">AI Draft</span>
-            <Badge variant="outline" className="text-[11px] py-0 h-4 capitalize">
-              {draft.status}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            To: {toEmail}
-          </div>
-        </div>
+       <div className="flex items-start justify-between">
+         <div className="flex items-center gap-2">
+           <Sparkles className="h-4 w-4 text-primary" />
+           <span className="text-sm font-medium">AI Draft</span>
+           <Badge variant="outline" className="text-[11px] py-0 h-4 capitalize">
+             {draft.status}
+           </Badge>
+         </div>
+         <div className="flex flex-col items-end gap-1">
+           <div className="flex items-center gap-2 text-xs text-muted-foreground">
+             <span>To: {toEmail}</span>
+             <button
+               onClick={() => setShowCcBcc(!showCcBcc)}
+               className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+             >
+               {showCcBcc ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+               CC/BCC
+             </button>
+           </div>
+           {showCcBcc && (
+             <div className="flex flex-col gap-1.5 w-full min-w-[280px]">
+               <div className="flex items-center gap-2">
+                 <span className="text-[11px] text-muted-foreground w-8 shrink-0">CC:</span>
+                 <Input
+                   value={ccInput}
+                   onChange={(e) => setCcInput(e.target.value)}
+                   placeholder="email@example.com, another@example.com"
+                   className="text-[12px] h-7 px-2"
+                 />
+               </div>
+               <div className="flex items-center gap-2">
+                 <span className="text-[11px] text-muted-foreground w-8 shrink-0">BCC:</span>
+                 <Input
+                   value={bccInput}
+                   onChange={(e) => setBccInput(e.target.value)}
+                   placeholder="email@example.com"
+                   className="text-[12px] h-7 px-2"
+                 />
+               </div>
+             </div>
+           )}
+         </div>
+       </div>
 
         <textarea
           value={editedBody}

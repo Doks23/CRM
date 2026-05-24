@@ -2,6 +2,8 @@ import { getGmailConnection } from "./client";
 
 export async function createGmailDraft(input: {
   to: string;
+  cc?: string[] | null;
+  bcc?: string[] | null;
   subject: string;
   body: string;
   threadId: string;
@@ -11,6 +13,8 @@ export async function createGmailDraft(input: {
 
   const raw = buildRawMessage({
     to: input.to,
+    cc: input.cc,
+    bcc: input.bcc,
     from: conn.email,
     subject: input.subject,
     body: input.body,
@@ -44,21 +48,30 @@ export async function sendGmailDraft(
 
 function buildRawMessage(opts: {
   to: string;
+  cc?: string[] | null;
+  bcc?: string[] | null;
   from: string;
   subject: string;
   body: string;
 }): string {
   const encodedBody = Buffer.from(opts.body, "utf-8").toString("base64");
-  const email = [
-    `To: ${opts.to}`,
-    `From: ${opts.from}`,
-    `Subject: ${opts.subject}`,
-    "MIME-Version: 1.0",
-    'Content-Type: text/plain; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
-    "",
-    encodedBody,
-  ].join("\r\n");
+  const lines: string[] = [];
 
+  lines.push(`To: ${opts.to}`);
+  if (opts.cc && opts.cc.length > 0) {
+    lines.push(`Cc: ${opts.cc.join(", ")}`);
+  }
+  if (opts.bcc && opts.bcc.length > 0) {
+    lines.push(`Bcc: ${opts.bcc.join(", ")}`);
+  }
+  lines.push(`From: ${opts.from}`);
+  lines.push(`Subject: ${opts.subject}`);
+  lines.push("MIME-Version: 1.0");
+  lines.push('Content-Type: text/plain; charset="UTF-8"');
+  lines.push("Content-Transfer-Encoding: base64");
+  lines.push("");
+  lines.push(encodedBody);
+
+  const email = lines.join("\r\n");
   return Buffer.from(email, "utf-8").toString("base64url");
 }

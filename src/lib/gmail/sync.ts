@@ -7,6 +7,7 @@ import {
   emailMessages,
   leads,
   businessProfile,
+  type EmailMessageMetadata,
 } from "@/db/schema";
 import { parseGmailMessage, type ParsedMessage } from "./parse";
 import { getGmailConnection, type GmailConnection } from "./client";
@@ -272,26 +273,40 @@ async function ingestMessageById(
  *
  * Lead-matching rule: dedup by the "other party" email. For inbound, that's
  * the sender. For outbound, it's the first recipient.
+ *
+ * Special handling:
+ * - LinkedIn notifications: mark source="linkedin"
+ * - Forwarded emails: if from internal team member to the CRM inbox, and
+ *   contains an original external sender, treat as referral.
+ *
  * Threads are implicit — grouped by gmail_thread_id on the message.
  *
  * Returns true if the message was persisted, false if filtered out.
  */
 async function persistMessage(msg: ParsedMessage): Promise<boolean> {
-  const profile = await db.query.businessProfile.findFirst();
+  const [profile, gmail] = await Promise.all([
+    db.query.businessProfile.findFirst(),
+    db.query.gmailAccount.findFirst(),
+  ]);
+
   const keywords: string[] =
     (profile?.inboxKeywords as string[] | undefined) ?? ["makhana"];
 
-  // Always persist messages in threads that already exist in the CRM.
+  const internalEmails = new Set<string>();
+  if (gmail?.email) internalEmails.add(gmail.email.toLowerCase());
+  const allowedEmails = (profile?.allowedEmails as Array<{ email: string }> | undefined) ?? [];
+  for (const a of allowedEmails) {
+    if (a.email) internalEmails.add(a.email.toLowerCase());
+  }
+
   const existingInThread = await db.query.emailMessages.findFirst({
     where: eq(emailMessages.gmailThreadId, msg.gmailThreadId),
     columns: { id: true },
   });
   if (existingInThread) {
-    // Insert without keyword check (existing conversation).
-    return doPersist(msg);
+    return doPersist(msg, internalEmails);
   }
 
-  // For new threads: only inbound messages matching keywords are admitted.
   if (msg.isOutbound) return false;
 
   const textToCheck =
@@ -299,21 +314,62 @@ async function persistMessage(msg: ParsedMessage): Promise<boolean> {
   const matches = keywords.some((kw) => textToCheck.includes(kw.toLowerCase()));
   if (!matches) return false;
 
-  return doPersist(msg);
+  return doPersist(msg, internalEmails);
 }
 
-/** Detect LinkedIn notification-style sender domains. */
-function isLinkedInNotification(email: string): boolean {
-  const domain = email.split("@")[1]?.toLowerCase();
-  return domain === "linkedin.com" || domain === "e.linkedin.com";
-}
+async function doPersist(msg: ParsedMessage, internalEmails: Set<string>): Promise<boolean> {
+  let effectiveOtherPartyEmail: string | null;
+  let effectiveContactName: string | null;
+  let source: "linkedin" | "gmail_direct" | "referral";
+  let isInternalForward = false;
 
-async function doPersist(msg: ParsedMessage): Promise<boolean> {
-  const otherPartyEmail = msg.isOutbound
-    ? msg.toEmails[0] ?? null
-    : msg.fromEmail;
+  if (msg.isOutbound) {
+    effectiveOtherPartyEmail = msg.toEmails[0] ?? null;
+    effectiveContactName = null;
+    source = "gmail_direct";
+  } else if (msg.forwarded?.isForwarded && msg.forwarded.originalFromEmail) {
+    const forwarderEmail = msg.forwarded.forwarderEmail?.toLowerCase();
+    const originalEmail = msg.forwarded.originalFromEmail.toLowerCase();
+    const originalIsInternal = internalEmails.has(originalEmail);
 
-  if (!otherPartyEmail) return false;
+    if (forwarderEmail && internalEmails.has(forwarderEmail) && !originalIsInternal) {
+      isInternalForward = true;
+      effectiveOtherPartyEmail = originalEmail;
+      effectiveContactName = msg.forwarded.originalFromName;
+      source = "referral";
+    } else {
+      effectiveOtherPartyEmail = msg.fromEmail;
+      effectiveContactName = msg.fromName;
+      source = "gmail_direct";
+    }
+  } else if (msg.isLinkedInNotification) {
+    effectiveOtherPartyEmail = msg.fromEmail;
+    effectiveContactName = msg.fromName;
+    source = "linkedin";
+  } else {
+    effectiveOtherPartyEmail = msg.fromEmail;
+    effectiveContactName = msg.fromName;
+    source = "gmail_direct";
+  }
+
+  if (!effectiveOtherPartyEmail) return false;
+
+  const emailMetadata: EmailMessageMetadata = {};
+  if (msg.isLinkedInNotification) {
+    emailMetadata.isLinkedInNotification = true;
+  }
+  if (msg.forwarded?.isForwarded) {
+    emailMetadata.forwarded = {
+      originalFromName: msg.forwarded.originalFromName,
+      originalFromEmail: msg.forwarded.originalFromEmail,
+      originalSubject: msg.forwarded.originalSubject,
+      originalDate: msg.forwarded.originalDate,
+      originalTo: msg.forwarded.originalTo,
+      forwarderName: msg.forwarded.forwarderName,
+      forwarderEmail: msg.forwarded.forwarderEmail,
+      isInternalForward,
+    };
+  }
 
   await db.transaction(async (tx) => {
     let leadId: string | null = null;
@@ -332,9 +388,9 @@ async function doPersist(msg: ParsedMessage): Promise<boolean> {
         .insert(leads)
         .values({
           leadCode: code,
-          primaryEmail: otherPartyEmail.toLowerCase(),
-          contactName: msg.isOutbound ? null : msg.fromName,
-          source: isLinkedInNotification(otherPartyEmail) ? "linkedin" : "gmail_direct",
+          primaryEmail: effectiveOtherPartyEmail.toLowerCase(),
+          contactName: effectiveContactName,
+          source,
           stage: "new",
           firstContactAt: msg.receivedAt,
           lastActivityAt: msg.receivedAt,
@@ -342,6 +398,8 @@ async function doPersist(msg: ParsedMessage): Promise<boolean> {
         .returning();
       leadId = newLead.id;
     }
+
+    const hasMetadata = Object.keys(emailMetadata).length > 0 || emailMetadata.forwarded;
 
     await tx.insert(emailMessages).values({
       leadId,
@@ -354,6 +412,7 @@ async function doPersist(msg: ParsedMessage): Promise<boolean> {
       receivedAt: msg.receivedAt,
       bodyText: msg.bodyText,
       bodyHtml: msg.bodyHtml,
+      emailMetadata: hasMetadata ? emailMetadata : undefined,
     });
 
     await tx

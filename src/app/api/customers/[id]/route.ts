@@ -4,6 +4,27 @@ import { db } from "@/db";
 import { customers } from "@/db/schema";
 import { auth } from "@/auth";
 
+export async function GET(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await ctx.params;
+  const customer = await db.query.customers.findFirst({
+    where: eq(customers.id, id),
+  });
+
+  if (!customer) {
+    return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(customer);
+}
+
 export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },

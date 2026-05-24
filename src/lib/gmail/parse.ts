@@ -1,5 +1,18 @@
 import type { gmail_v1 } from "googleapis";
 
+export interface ForwardedEmailInfo {
+  isForwarded: boolean;
+  originalFromName: string | null;
+  originalFromEmail: string | null;
+  originalSubject: string | null;
+  originalDate: string | null;
+  originalTo: string | null;
+  forwarderName: string | null;
+  forwarderEmail: string | null;
+  /** The forwarded content after the forwarded header (the part written by forwarder is separate). */
+  forwardedContent: string | null;
+}
+
 export interface ParsedMessage {
   gmailMessageId: string;
   gmailThreadId: string;
@@ -13,6 +26,10 @@ export interface ParsedMessage {
   labelIds: string[];
   /** True when the message has the `SENT` label (we wrote it). */
   isOutbound: boolean;
+  /** If this is a LinkedIn notification email */
+  isLinkedInNotification: boolean;
+  /** Forwarded email metadata */
+  forwarded: ForwardedEmailInfo | null;
 }
 
 /** Decode a Gmail base64url body part to a UTF-8 string. */
@@ -107,7 +124,6 @@ export function parseGmailMessage(
   const { name: fromName, email: fromEmail } = parseAddress(fromRaw);
   const toEmails = parseAddressList(toRaw);
 
-  // Prefer internalDate (epoch ms) over Date header — it's accurate.
   const receivedAt = msg.internalDate
     ? new Date(Number(msg.internalDate))
     : dateRaw
@@ -115,7 +131,11 @@ export function parseGmailMessage(
       : new Date();
 
   const { text, html } = extractBodies(msg.payload);
+  const bodyText = text || stripHtml(html);
   const labelIds = msg.labelIds ?? [];
+
+  const isLinkedIn = isLinkedInEmail(fromEmail);
+  const forwarded = detectForwardedEmail(subject, bodyText, fromEmail, fromName);
 
   return {
     gmailMessageId: msg.id,
@@ -125,10 +145,12 @@ export function parseGmailMessage(
     fromEmail,
     toEmails,
     subject,
-    bodyText: text || stripHtml(html),
+    bodyText,
     bodyHtml: html,
     labelIds,
     isOutbound: labelIds.includes("SENT"),
+    isLinkedInNotification: isLinkedIn,
+    forwarded,
   };
 }
 
@@ -145,4 +167,125 @@ function stripHtml(html: string): string {
     .replace(/&gt;/g, ">")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Detect LinkedIn notification-style sender domains. */
+export function isLinkedInEmail(email: string | null): boolean {
+  if (!email) return false;
+  const domain = email.split("@")[1]?.toLowerCase();
+  return domain === "linkedin.com" || domain === "e.linkedin.com";
+}
+
+/** Detect if subject indicates a forwarded email. */
+function isForwardedSubject(subject: string): boolean {
+  const s = subject.trim().toLowerCase();
+  return s.startsWith("fwd:") || s.startsWith("fw:") || s.startsWith("re: fwd:");
+}
+
+/**
+ * Parse forwarded email from body text.
+ *
+ * Detects patterns like:
+ * ---------- Forwarded message ----------
+ * From: John Doe <john@example.com>
+ * Date: Mon, Jan 15, 2024 at 10:00 AM
+ * Subject: Inquiry about makhana
+ * To: saurabh@whitepops.com
+ */
+function parseForwardedFromBody(
+  bodyText: string,
+  currentFromEmail: string | null,
+  currentFromName: string | null,
+): ForwardedEmailInfo | null {
+  if (!bodyText) return null;
+
+  const forwardedPatterns = [
+    /-{10,}\s*Forwarded message\s*-{10,}/i,
+    /Begin forwarded message:/i,
+    /^Fwd:/m,
+  ];
+
+  let matchIndex = -1;
+  for (const pattern of forwardedPatterns) {
+    const match = bodyText.match(pattern);
+    if (match && match.index !== undefined) {
+      matchIndex = match.index;
+      break;
+    }
+  }
+
+  if (matchIndex === -1) return null;
+
+  const headerSection = bodyText.slice(matchIndex);
+
+  const info: ForwardedEmailInfo = {
+    isForwarded: true,
+    originalFromName: null,
+    originalFromEmail: null,
+    originalSubject: null,
+    originalDate: null,
+    originalTo: null,
+    forwarderName: currentFromName,
+    forwarderEmail: currentFromEmail,
+    forwardedContent: null,
+  };
+
+  const fromMatch = headerSection.match(/From:\s*([^\n]+)/i);
+  if (fromMatch) {
+    const parsed = parseAddress(fromMatch[1].trim());
+    info.originalFromName = parsed.name;
+    info.originalFromEmail = parsed.email;
+  }
+
+  const subjectMatch = headerSection.match(/Subject:\s*([^\n]+)/i);
+  if (subjectMatch) {
+    info.originalSubject = subjectMatch[1].trim();
+  }
+
+  const dateMatch = headerSection.match(/Date:\s*([^\n]+)/i);
+  if (dateMatch) {
+    info.originalDate = dateMatch[1].trim();
+  }
+
+  const toMatch = headerSection.match(/To:\s*([^\n]+)/i);
+  if (toMatch) {
+    info.originalTo = toMatch[1].trim();
+  }
+
+  const firstBlankLineAfterHeader = headerSection.indexOf("\n\n");
+  if (firstBlankLineAfterHeader > 0) {
+    info.forwardedContent = headerSection.slice(firstBlankLineAfterHeader).trim();
+  }
+
+  if (!info.originalFromEmail && !info.originalSubject) {
+    return null;
+  }
+
+  return info;
+}
+
+/** Detect and parse forwarded email. */
+function detectForwardedEmail(
+  subject: string,
+  bodyText: string,
+  fromEmail: string | null,
+  fromName: string | null,
+): ForwardedEmailInfo | null {
+  if (isForwardedSubject(subject)) {
+    const parsed = parseForwardedFromBody(bodyText, fromEmail, fromName);
+    if (parsed) return parsed;
+    return {
+      isForwarded: true,
+      originalFromName: null,
+      originalFromEmail: null,
+      originalSubject: subject.replace(/^(Fwd|FW|Re: Fwd|Re: FW):\s*/i, "").trim(),
+      originalDate: null,
+      originalTo: null,
+      forwarderName: fromName,
+      forwarderEmail: fromEmail,
+      forwardedContent: bodyText,
+    };
+  }
+
+  return parseForwardedFromBody(bodyText, fromEmail, fromName);
 }
