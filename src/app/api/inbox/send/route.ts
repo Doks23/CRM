@@ -109,36 +109,94 @@ export async function POST(req: NextRequest) {
          .where(eq(aiDrafts.id, draftId));
      }
 
-     // Reuse an already-created Gmail draft if a previous attempt got that far
-     // but failed before send completed. Without this, retries duplicate the
-     // Gmail Draft in the user's drafts folder.
-     let gmailDraftId = draft.gmailDraftId;
-     if (!gmailDraftId) {
-       gmailDraftId = await createGmailDraft({
-         to: toEmail,
-         cc: cc && cc.length > 0 ? cc : null,
-         bcc: bcc && bcc.length > 0 ? bcc : null,
-         subject: subject.startsWith("Re:") ? subject : `Re: ${subject}`,
-         body: finalBody,
-         threadId,
-       });
+      // Reuse an already-created Gmail draft if a previous attempt got that far
+      // but failed before send completed. Without this, retries duplicate the
+      // Gmail Draft in the user's drafts folder.
+      // However: gmailDraftId could be STALE (draft deleted externally), so handle that.
+      let gmailDraftId = draft.gmailDraftId;
 
-       if (!gmailDraftId) {
-         return NextResponse.json(
-           { error: "Gmail account not connected" },
-           { status: 500 },
-         );
-       }
+      if (!gmailDraftId) {
+        // No saved draft ID — create fresh
+        gmailDraftId = await createGmailDraft({
+          to: toEmail,
+          cc: cc && cc.length > 0 ? cc : null,
+          bcc: bcc && bcc.length > 0 ? bcc : null,
+          subject: subject.startsWith("Re:") ? subject : `Re: ${subject}`,
+          body: finalBody,
+          threadId,
+        });
 
-       // Save the Gmail draft id immediately, before we attempt to send it.
-       // A retry now finds gmailDraftId set and skips re-creation.
-       await db
-         .update(aiDrafts)
-         .set({ gmailDraftId })
-         .where(eq(aiDrafts.id, draftId));
-     }
+        if (!gmailDraftId) {
+          return NextResponse.json(
+            { error: "Gmail account not connected" },
+            { status: 500 },
+          );
+        }
 
-    const sentMessageId = await sendGmailDraft(gmailDraftId);
+        await db
+          .update(aiDrafts)
+          .set({ gmailDraftId })
+          .where(eq(aiDrafts.id, draft.id));
+      } else {
+        // We have a saved gmailDraftId — verify it exists before trying to send
+        // If it doesn't exist (404), clear stale ID and create fresh
+        const conn = await (await import("@/lib/gmail/client")).getGmailConnection();
+        if (conn) {
+          let needNewDraft = false;
+          try {
+            // Check if draft exists
+            await conn.gmail.users.drafts.get({
+              userId: "me",
+              id: gmailDraftId,
+            });
+           } catch (verifyErr: any) {
+             // Draft not found — we'll need a new one
+             const msg = verifyErr?.message ? String(verifyErr.message).toLowerCase() : "";
+             if (
+               verifyErr?.code === 404 ||
+               msg.includes("not found") ||
+               msg.includes("entity was not found")
+             ) {
+               needNewDraft = true;
+             } else {
+               // Re-throw other errors (auth issues, rate limits, etc.)
+               throw verifyErr;
+             }
+           }
+
+          if (needNewDraft) {
+            gmailDraftId = await createGmailDraft({
+              to: toEmail,
+              cc: cc && cc.length > 0 ? cc : null,
+              bcc: bcc && bcc.length > 0 ? bcc : null,
+              subject: subject.startsWith("Re:") ? subject : `Re: ${subject}`,
+              body: finalBody,
+              threadId,
+            });
+
+            if (!gmailDraftId) {
+              return NextResponse.json(
+                { error: "Gmail account not connected" },
+                { status: 500 },
+              );
+            }
+
+            await db
+              .update(aiDrafts)
+              .set({ gmailDraftId })
+              .where(eq(aiDrafts.id, draft.id));
+          }
+        }
+      }
+
+      if (!gmailDraftId) {
+        return NextResponse.json(
+          { error: "Gmail account not connected" },
+          { status: 500 },
+        );
+      }
+
+      const sentMessageId = await sendGmailDraft(gmailDraftId);
 
     if (!sentMessageId) {
       return NextResponse.json(
